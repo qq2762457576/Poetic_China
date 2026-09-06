@@ -1,4 +1,4 @@
-/* 诗韵中华 · 全站交互脚本（无框架，IIFE）
+/* 诗意中国 · 全站交互脚本（无框架，IIFE）
  * 数据：assets/data/poems.js（window.POEM_DATA，开源 chinese-poetry 数据集）
  * 持久化：localStorage（学习进度 / 收藏 / 社区投稿与审核，纯前端演示）
  */
@@ -770,7 +770,7 @@
     if (subEl) subEl.textContent = poem.author + ' · ' + poem.dynasty + ' · ' + poem.form;
     var crumbEl = document.getElementById('study-crumb');
     if (crumbEl) crumbEl.textContent = poem.title;
-    document.title = poem.title + ' · ' + poem.author + ' — 诗韵中华';
+    document.title = poem.title + ' · ' + poem.author + ' — 诗意中国';
 
     /* 原文面板：逐句可点 */
     var verseList = document.getElementById('verse-list');
