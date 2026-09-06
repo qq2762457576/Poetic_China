@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /auth.html
+
+Sitemap: https://qq2762457576.github.io/Poetic_China/sitemap.xml
