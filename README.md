@@ -2,6 +2,8 @@
 
 练习用的 Git 仓库；同时存放「诗韵中华」古诗词社区网站的静态站点源码。
 
+**在线预览**：https://qq2762457576.github.io/git/
+
 ```bash
 git clone <仓库地址>
 cd git
