@@ -35,14 +35,73 @@
     return list;
   }
 
-  /* 当前用户（演示站点：站长即段瑜，默认审核人） */
-  var CURRENT_USER = '段瑜';
+  /* ---------- 账号体系（本地演示版） ----------
+   * 纯静态站没有服务器，账号存 localStorage：密码加盐哈希（https 下 SHA-256，
+   * file:// 等非安全上下文退化为 FNV-1a），会话写 shici_session 全站共享。
+   * 注意：这解决「能注册/登录/保持登录」的产品流程，但不是生产级安全；
+   * 真要多端同步账号，需要接后端（如 Supabase / LeanCloud）。 */
+  var Auth = (function () {
+    var UKEY = 'shici_users';
+    var SKEY = 'shici_session';
+    function fnv(str) {
+      var h = 0x811c9dc5;
+      for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
+      return ('0000000' + h.toString(16)).slice(-8) + (str.length).toString(16);
+    }
+    function hash(text) {
+      if (window.crypto && window.crypto.subtle && window.isSecureContext && window.TextEncoder) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+          return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+            return ('0' + b.toString(16)).slice(-2);
+          }).join('');
+        }, function () { return fnv(text); });
+      }
+      return Promise.resolve(fnv(text));
+    }
+    function makeSalt() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    return {
+      current: function () {
+        var s = store(SKEY, null);
+        return s && s.name ? s.name : null;
+      },
+      register: function (account, name, pwd, cb) {
+        var users = store(UKEY, {});
+        if (users[account]) return cb('该账号已注册，直接去登录吧');
+        var salt = makeSalt();
+        hash(salt + pwd).then(function (h) {
+          users[account] = { name: name, salt: salt, hash: h, ts: Date.now() };
+          saveStore(UKEY, users);
+          saveStore(SKEY, { account: account, name: name, ts: Date.now() });
+          cb(null);
+        });
+      },
+      login: function (account, pwd, cb) {
+        var u = store(UKEY, {})[account];
+        if (!u) return cb('账号不存在，先注册一个吧');
+        hash(u.salt + pwd).then(function (h) {
+          if (h !== u.hash) return cb('密码不对，再想想');
+          saveStore(SKEY, { account: account, name: u.name, ts: Date.now() });
+          cb(null);
+        });
+      },
+      logout: function () {
+        try { localStorage.removeItem(SKEY); } catch (e) { /* 忽略 */ }
+      }
+    };
+  })();
 
-  /* ---------- 1. 诗词数据层 ---------- */
+  /* 当前用户：登录后为笔名；未登录沿用站长（默认审核人） */
+  var CURRENT_USER = Auth.current() || '段瑜';
+
+  /* ---------- 1. 诗词数据层（索引 + 正文懒加载） ---------- */
   var DYNASTY_KEY = { '唐': '唐', '宋': '宋', '先秦': '先秦', '汉魏六朝': '汉魏六朝', '元': '元明清', '明': '明', '清': '元明清', '近现代': '近现代' };
-  var GENRE_KEY = { '绝': '诗', '律': '诗', '古': '诗', '诗': '诗', '骚': '诗', '词': '词', '曲': '曲' };
+  var GENRE_KEY = { '绝': '诗', '律': '诗', '古': '诗', '诗': '诗', '骚': '诗', '词': '词', '曲': '曲', '赋': '赋', '文': '文' };
 
-  var POEMS = (window.POEM_DATA || []).map(function (r, i) {
+  /* POEM_INDEX: [标题,作者,朝代,体裁,徽标,主题,首行] — 页面默认只加载它 */
+  var POEMS = (window.POEM_INDEX || []).map(function (r, i) {
     return {
       id: i,
       title: r[0],
@@ -53,12 +112,45 @@
       genre: r[4],
       genreKey: GENRE_KEY[r[4]] || '诗',
       themes: [r[5]],
-      text: r[6],
-      line: r[6].split('\n')[0],
+      line: r[6],
       notes: 3 + ((i * 37) % 96),
       readers: (((i * 53) % 900 + 60) / 10).toFixed(1) + ' 万'
     };
   });
+
+  function loadScript(src, cb) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = function () { if (cb) cb(true); };
+    s.onerror = function () { if (cb) cb(false); };
+    document.head.appendChild(s);
+  }
+
+  /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
+  var CHUNK_SIZE = 3000;
+  var TextStore = (function () {
+    var cache = {};
+    var pending = {};
+    function loadChunk(no, cb) {
+      if (cache[no]) return cb(cache[no]);
+      if (pending[no]) { pending[no].push(cb); return; }
+      pending[no] = [cb];
+      loadScript('assets/data/poems-text/p' + no + '.js?v=20260909a', function () {
+        cache[no] = window['POEM_TEXT_' + no] || [];
+        var cbs = pending[no];
+        delete pending[no];
+        cbs.forEach(function (cb2) { cb2(cache[no]); });
+      });
+    }
+    return {
+      text: function (id, cb) {
+        var no = Math.floor(id / CHUNK_SIZE);
+        loadChunk(no, function (arr) { cb(arr[id - no * CHUNK_SIZE] || ''); });
+      },
+      chunk: loadChunk,
+      chunkCount: Math.ceil(POEMS.length / CHUNK_SIZE)
+    };
+  })();
 
   function poemUrl(id) { return 'study.html?id=' + id; }
   function findPoem(id) { return POEMS[id] || null; }
@@ -95,7 +187,7 @@
     if (!tabs.length) return;
     tabs.forEach(function (tab) {
       tab.addEventListener('click', function () {
-        tabs.forEach(function (t) { t.classList.toggle('auth-tab--active', t === tab); });
+        tabs.forEach(function (t) { t.classList.toggle('is-active', t === tab); });
         var mode = tab.getAttribute('data-mode');
         document.querySelectorAll('[data-panel]').forEach(function (panel) {
           panel.hidden = panel.getAttribute('data-panel') !== mode;
@@ -105,20 +197,78 @@
   }
 
   function initAuthForm() {
-    document.querySelectorAll('form[data-panel]').forEach(function (form) {
-      form.addEventListener('submit', function (e) {
+    var regForm = document.querySelector('form[data-panel="register"]');
+    var loginForm = document.querySelector('form[data-panel="login"]');
+    if (!regForm && !loginForm) return;
+
+    function hint(form, msg, ok) {
+      var el = form.querySelector('[data-hint]');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.toggle('is-error', !ok);
+      el.classList.toggle('is-ok', !!ok);
+    }
+    function val(id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+
+    if (regForm) {
+      regForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        var btn = form.querySelector('button[type="submit"]');
-        if (btn) {
-          btn.textContent = '已提交 · 演示站点不落库';
-          btn.disabled = true;
-          setTimeout(function () {
-            btn.textContent = btn.getAttribute('data-label') || '提交';
-            btn.disabled = false;
-          }, 1600);
-        }
+        var account = val('reg-account');
+        var name = val('reg-name');
+        var pwd = val('reg-pwd');
+        var agree = document.getElementById('reg-agree');
+        if (!/^(\S+@\S+\.\S+|1\d{10})$/.test(account)) return hint(regForm, '账号请填邮箱或 11 位手机号');
+        if (name.length < 2 || name.length > 12) return hint(regForm, '笔名取 2-12 个字');
+        if (pwd.length < 8 || !/[a-zA-Z]/.test(pwd) || !/\d/.test(pwd)) return hint(regForm, '密码至少 8 位，且同时包含字母与数字');
+        if (agree && !agree.checked) return hint(regForm, '请先勾选同意《社区公约》与《隐私政策》');
+        hint(regForm, '注册中…', true);
+        Auth.register(account, name, pwd, function (err) {
+          if (err) return hint(regForm, err);
+          hint(regForm, '注册成功，正在进入诗意中国…', true);
+          setTimeout(function () { location.href = 'index.html'; }, 700);
+        });
+      });
+    }
+
+    if (loginForm) {
+      loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var account = val('login-account');
+        var pwd = val('login-pwd');
+        if (!account || !pwd) return hint(loginForm, '账号和密码都要填');
+        hint(loginForm, '登录中…', true);
+        Auth.login(account, pwd, function (err) {
+          if (err) return hint(loginForm, err);
+          hint(loginForm, '登录成功，欢迎回来…', true);
+          setTimeout(function () { location.href = 'index.html'; }, 700);
+        });
+      });
+    }
+
+    /* 第三方登录：演示站占位 */
+    document.querySelectorAll('.oauth-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        hint(regForm || loginForm, '演示站点暂未接入第三方登录，请用账号注册 / 登录');
       });
     });
+
+    /* 已登录用户直达 */
+    if (Auth.current()) {
+      var wrap = document.querySelector('.auth-form-wrap');
+      if (wrap) {
+        wrap.innerHTML =
+          '<div style="text-align:center;padding:40px 0;">' +
+          '<h2 class="form-title">已登录为「' + esc(Auth.current()) + '」</h2>' +
+          '<p class="form-sub" style="margin:12px 0 24px;">学习进度与闯关成绩会在本机自动保存</p>' +
+          '<a class="btn btn--primary btn--block" href="index.html">回到首页</a>' +
+          '<p class="form-hint" style="margin-top:16px;"><a data-logout style="cursor:pointer;">退出登录</a></p>' +
+          '</div>';
+      }
+    }
+
     document.querySelectorAll('[data-switch]').forEach(function (link) {
       link.addEventListener('click', function () {
         var tab = document.querySelector('.auth-tab[data-mode="' + link.getAttribute('data-switch') + '"]');
@@ -127,7 +277,34 @@
     });
   }
 
-  /* ---------- 4. 首页：每日推荐 + 分体裁板块 ---------- */
+  /* 顶栏登录态：登录后显示笔名 + 退出 */
+  function initAuthUI() {
+    var name = Auth.current();
+    if (!name) return;
+    document.querySelectorAll('.header-actions .only-desktop').forEach(function (box) {
+      if (!box.querySelector('a[href="auth.html"]')) return;
+      box.innerHTML =
+        '<span class="auth-user">你好，' + esc(name) + '</span>' +
+        '<a class="btn btn--ghost" style="padding:9px 20px;cursor:pointer;" data-logout>退出</a>';
+    });
+    document.querySelectorAll('.mobile-menu a[href="auth.html"]').forEach(function (a) {
+      a.textContent = '退出登录（' + name + '）';
+      a.removeAttribute('href');
+      a.setAttribute('data-logout', '');
+    });
+  }
+
+  /* 退出登录（事件委托，全站通用） */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-logout]');
+    if (!btn) return;
+    e.preventDefault();
+    Auth.logout();
+    location.reload();
+  });
+
+  /* ---------- 4. 首页：每日推荐 + 分体裁板块 ----------
+   * 首页只加载 featured.js（54KB，含正文与全站统计），不加载全库索引 */
   function daySeed() {
     var d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -154,13 +331,20 @@
     );
   }
 
+  var FEATURED = (window.FEATURED || []).map(function (r) {
+    return {
+      id: r[0], title: r[1], author: r[2], dynasty: r[3], form: r[4],
+      genre: r[5], genreKey: GENRE_KEY[r[5]] || '诗', themes: ['咏怀'], text: r[6]
+    };
+  });
+
   function initHome() {
     var dailyEl = document.getElementById('daily-poem');
     if (!dailyEl) return;
 
     var seed = daySeed();
     /* 每日推荐：从短于 120 字的名篇体量里按日期轮换 */
-    var shortOnes = POEMS.filter(function (p) { return p.text.length <= 120; });
+    var shortOnes = FEATURED.filter(function (p) { return p.text.length <= 120; });
     var daily = seededPick(shortOnes, seed, 1)[0];
     if (daily) {
       dailyEl.innerHTML =
@@ -178,19 +362,24 @@
     ];
     boards.forEach(function (b, bi) {
       if (!b.el) return;
-      var list = POEMS.filter(function (p) { return p.genreKey === b.key && p.text.length <= 200; });
+      var list = FEATURED.filter(function (p) { return p.genreKey === b.key && p.text.length <= 200; });
       var picks = seededPick(list, seed + bi * 104729, b.count);
       b.el.innerHTML = picks.map(function (p) { return miniCard(p, p.form); }).join('');
     });
 
-    /* 数据条：真实统计 */
+    /* 数据条：真实统计（featured.js 附带，免加载全库） */
+    var fstats = window.FEATURED_STATS || { poems: POEMS.length, authors: 0 };
     var statPoems = document.getElementById('stat-poems');
     var statAuthors = document.getElementById('stat-authors');
-    if (statPoems) statPoems.textContent = POEMS.length.toLocaleString('en-US');
+    if (statPoems) statPoems.textContent = (fstats.poems || 0).toLocaleString('en-US');
     if (statAuthors) {
-      var authors = {};
-      POEMS.forEach(function (p) { authors[p.author] = 1; });
-      statAuthors.textContent = Object.keys(authors).length.toLocaleString('en-US');
+      var authors = fstats.authors;
+      if (!authors) {
+        var set = {};
+        POEMS.forEach(function (p) { set[p.author] = 1; });
+        authors = Object.keys(set).length;
+      }
+      statAuthors.textContent = authors.toLocaleString('en-US');
     }
 
     /* 入场动画：滚动到可视区再播 */
@@ -218,7 +407,9 @@
     theme: '全部',
     status: '全部',
     sort: '推荐',
-    page: 1
+    page: 1,
+    textHits: null,   /* 正文搜索命中 id 数组（null = 未做正文搜索） */
+    scanning: false
   };
   var PER_PAGE = 20;
 
@@ -229,11 +420,46 @@
     if (state.status === '已学' && !isLearned(poem.id)) return false;
     if (state.status === '未学' && isLearned(poem.id)) return false;
     if (state.status === '已收藏' && !isFav(poem.id)) return false;
+    if (state.textHits) {
+      /* 已做正文搜索：关键词条件由命中列表表达，其余筛选照常 */
+      return state.textHits.indexOf(poem.id) !== -1;
+    }
     if (state.keyword) {
-      var haystack = poem.title + poem.author + poem.text + poem.dynasty + poem.form;
+      var haystack = poem.title + poem.author + poem.line + poem.dynasty + poem.form;
       if (haystack.indexOf(state.keyword) === -1) return false;
     }
     return true;
+  }
+
+  /* 全文搜索：元数据无结果时，逐批加载正文块扫描（进度可见，命中 500 封顶） */
+  function scanFullText(kw) {
+    if (state.scanning) return;
+    state.scanning = true;
+    var hits = [];
+    var no = 0;
+    var total = TextStore.chunkCount;
+    var countEl = document.getElementById('result-count');
+    function step() {
+      if (no >= total || hits.length >= 500 || state.keyword !== kw) {
+        state.scanning = false;
+        state.textHits = hits;
+        state.page = 1;
+        renderPoems();
+        return;
+      }
+      if (countEl) {
+        countEl.textContent = '正文搜索中… 已扫描 ' + no + ' / ' + total + ' 批，命中 ' + hits.length + ' 首';
+      }
+      TextStore.chunk(no, function (arr) {
+        var base = no * CHUNK_SIZE;
+        for (var i = 0; i < arr.length; i++) {
+          if (arr[i] && arr[i].indexOf(kw) !== -1) hits.push(base + i);
+        }
+        no += 1;
+        step();
+      });
+    }
+    step();
   }
 
   function relevance(poem, kw) {
@@ -305,7 +531,11 @@
     if (!wrap) return;
 
     var list = sortPoems(POEMS.filter(matchFilters));
-    if (countEl) countEl.textContent = '共 ' + list.length.toLocaleString('en-US') + ' 首符合条件';
+    if (countEl) {
+      countEl.textContent = state.textHits
+        ? '正文搜索命中 ' + list.length.toLocaleString('en-US') + ' 首'
+        : '共 ' + list.length.toLocaleString('en-US') + ' 首符合条件';
+    }
 
     var pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
     if (state.page > pages) state.page = pages;
@@ -313,7 +543,19 @@
     var pageItems = list.slice(start, start + PER_PAGE);
 
     if (!pageItems.length) {
-      wrap.innerHTML = '<div class="empty-state">没有找到匹配的作品，换个词试试</div>';
+      /* 元数据无结果且尚未做正文搜索 → 提供全文搜索入口 */
+      if (state.keyword && !state.textHits && !state.scanning) {
+        wrap.innerHTML =
+          '<div class="empty-state">标题 / 作者 / 首行中没有「' + esc(state.keyword) + '」' +
+          '<br /><button class="btn btn--ghost" id="fulltext-scan-btn" style="margin-top:14px;">在全部 ' +
+          POEMS.length.toLocaleString('en-US') + ' 首的正文里搜（会分批下载正文数据）</button></div>';
+        var scanBtn = document.getElementById('fulltext-scan-btn');
+        if (scanBtn) {
+          scanBtn.addEventListener('click', function () { scanFullText(state.keyword); });
+        }
+      } else {
+        wrap.innerHTML = '<div class="empty-state">没有找到匹配的作品，换个词试试</div>';
+      }
       renderPagination(1);
       return;
     }
@@ -322,10 +564,9 @@
       .map(function (p) {
         var learned = isLearned(p.id);
         var meta = '注释 ' + p.notes + ' 条 · ' + p.readers + ' 人读过' + (learned ? ' · 已学' : '');
-        /* 展示完整内容：超过 4 行的截断，详情进课堂页看 */
-        var lines = p.text.split('\n');
-        var shown = lines.slice(0, 4).map(esc).join('<br />');
-        if (lines.length > 4) shown += '<br /><span class="poem-row-more">…… 共 ' + lines.length + ' 行，点击查看全文</span>';
+        /* 列表只显示首行（索引自带），全文进课堂页按块加载 */
+        var shown = esc(p.line) +
+          '<br /><span class="poem-row-more">点击查看全文与注释 →</span>';
         return (
           '<article class="poem-row poem-row--link" data-goto="' + poemUrl(p.id) + '">' +
           '<div class="genre-badge">' + esc(p.genre) + '</div>' +
@@ -389,6 +630,7 @@
     if (input) {
       input.addEventListener('input', function () {
         state.keyword = input.value.trim();
+        state.textHits = null;
         state.page = 1;
         renderPoems();
       });
@@ -419,6 +661,7 @@
         if (input) {
           input.value = btn.getAttribute('data-hotword');
           state.keyword = input.value;
+          state.textHits = null;
           state.page = 1;
           renderPoems();
         }
@@ -445,9 +688,22 @@
   function postBody(p) {
     if (p.kind === 'classic' && p.poemId !== null && p.poemId !== undefined) {
       var poem = findPoem(p.poemId);
-      if (poem) return poem.text.split('\n').map(esc).join('<br />');
+      if (poem) {
+        /* 正文按需加载：先放首行占位，块到位后替换为全文 */
+        return '<span data-poem-body="' + poem.id + '">' + esc(poem.line) + ' …</span>';
+      }
     }
     return esc(p.text).replace(/\n/g, '<br />');
+  }
+
+  function fillClassicBodies(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-poem-body]').forEach(function (el) {
+      var id = parseInt(el.getAttribute('data-poem-body'), 10);
+      TextStore.text(id, function (text) {
+        if (text) el.innerHTML = text.split('\n').map(esc).join('<br />');
+      });
+    });
   }
 
   function postCard(p, mine) {
@@ -499,6 +755,7 @@
     list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
       '<div class="empty-state">还没有作品，来写第一首吧</div>';
     list.querySelectorAll('[data-like]').forEach(bindLike);
+    fillClassicBodies(list);
   }
 
   function renderModeration() {
@@ -532,6 +789,7 @@
             );
           }).join('')
         : '<div class="empty-state">审核队列已清空，喝杯茶吧</div>';
+      fillClassicBodies(queueEl);
     }
 
     /* 审核人列表 */
@@ -636,6 +894,12 @@
     var submit = document.querySelector('[data-compose-submit]');
     if (submit) {
       submit.addEventListener('click', function () {
+        if (!Auth.current()) {
+          var hint0 = document.getElementById('feed-hint');
+          if (hint0) hint0.textContent = '请先登录再发布作品，正在跳转登录页…';
+          setTimeout(function () { location.href = 'auth.html'; }, 800);
+          return;
+        }
         var posts = getPosts();
         var base = {
           id: 'p' + Date.now(),
@@ -749,6 +1013,24 @@
     }
   };
 
+  /* POEM_NOTES（assets/data/notes.js）："标题|作者" -> {y:译文, s:赏析, b:背景}
+   * 模糊匹配兜底：标题全等 → 标题互含（同作者） */
+  function lookupNotes(title, author) {
+    var notes = window.POEM_NOTES || {};
+    var key = title + '|' + author;
+    if (notes[key]) return notes[key];
+    var k, parts;
+    for (k in notes) {
+      parts = k.split('|');
+      if (parts[0] === title) return notes[k];
+    }
+    for (k in notes) {
+      parts = k.split('|');
+      if (parts[1] === author && (title.indexOf(parts[0]) !== -1 || parts[0].indexOf(title) !== -1)) return notes[k];
+    }
+    return null;
+  }
+
   function initStudy() {
     var titleEl = document.getElementById('study-title');
     if (!titleEl) return;
@@ -761,10 +1043,7 @@
     }
     if (!poem) return;
 
-    var curated = CURATED[poem.title + '|' + poem.author] || null;
-    var lines = poem.text.split('\n');
-
-    /* 头部 */
+    /* 头部：索引数据，立即渲染 */
     titleEl.textContent = poem.title;
     var subEl = document.getElementById('study-subtitle');
     if (subEl) subEl.textContent = poem.author + ' · ' + poem.dynasty + ' · ' + poem.form;
@@ -772,54 +1051,16 @@
     if (crumbEl) crumbEl.textContent = poem.title;
     document.title = poem.title + ' · ' + poem.author + ' — 诗意中国';
 
-    /* 原文面板：逐句可点 */
-    var verseList = document.getElementById('verse-list');
-    if (verseList) {
-      verseList.innerHTML = lines.map(function (ln, i) {
-        var note = curated && curated.notes[i] ? curated.notes[i][1] : '';
-        return (
-          '<div class="verse-row" data-verse="' + i + '">' +
-          '<span class="verse-text">' + esc(ln) + '</span>' +
-          (note ? '<span class="verse-note">' + esc(note) + '</span>' : '') +
-          '</div>'
-        );
-      }).join('');
-      verseList.querySelectorAll('[data-verse]').forEach(function (row) {
-        row.addEventListener('click', function () {
-          verseList.querySelectorAll('[data-verse]').forEach(function (r) {
-            r.classList.toggle('is-active', r === row);
-          });
-        });
-      });
-    }
+    var verseList0 = document.getElementById('verse-list');
+    if (verseList0) verseList0.innerHTML = '<div class="empty-state">正文载入中…</div>';
 
-    /* 注释面板 */
-    var notePanel = document.getElementById('panel-notes');
-    if (notePanel) {
-      notePanel.innerHTML = curated
-        ? '<ul class="note-list">' + curated.notes.map(function (n) {
-            return '<li class="note-item"><strong>' + esc(n[0]) + '</strong><span>' + esc(n[1]) + '</span></li>';
-          }).join('') + '</ul>'
-        : '<div class="empty-state">该篇的逐句注释正在编校中，欢迎到社区广场分享你的理解。</div>';
-    }
+    /* 正文按块懒加载，到位后再渲染原文/注释/译文/赏析 */
+    TextStore.text(poem.id, function (text) {
+      poem.text = text || poem.line;
+      renderStudyText(poem);
+    });
 
-    /* 译文面板 */
-    var transPanel = document.getElementById('panel-translation');
-    if (transPanel) {
-      transPanel.innerHTML = curated
-        ? '<p class="serif study-prose">' + esc(curated.translation) + '</p>'
-        : '<div class="empty-state">白话译文正在编校中。先读原文，体会字面之下的节奏与气息。</div>';
-    }
-
-    /* 赏析面板 */
-    var aprePanel = document.getElementById('panel-appreciation');
-    if (aprePanel) {
-      aprePanel.innerHTML = curated
-        ? '<p class="serif study-prose">' + esc(curated.appreciation) + '</p>'
-        : '<div class="empty-state">赏析文章正在编校中。' + esc(poem.form) + ' · ' + esc(poem.themes[0]) + '题材，全文 ' + lines.length + ' 行。</div>';
-    }
-
-    /* 四栏切换 */
+    /* 四栏切换（不依赖正文，直接绑定） */
     var tabBar = document.getElementById('study-tabs');
     if (tabBar) {
       tabBar.addEventListener('click', function (e) {
@@ -885,11 +1126,11 @@
       else nextEl.hidden = true;
     }
 
-    /* 同题材推荐（可点击） */
+    /* 同题材推荐（可点击，索引数据即可） */
     var relEl = document.getElementById('related-list');
     if (relEl) {
       var same = POEMS.filter(function (p) {
-        return p.id !== poem.id && p.themes[0] === poem.themes[0] && p.text.length <= 120;
+        return p.id !== poem.id && p.themes[0] === poem.themes[0] && p.line.length <= 30;
       });
       var picks = seededPick(same, poem.id * 31 + 7, 3);
       relEl.innerHTML = picks.map(function (p) {
@@ -913,45 +1154,89 @@
     }
   }
 
+  /* 正文块到位后：渲染原文 / 注释 / 译文 / 赏析面板 */
+  function renderStudyText(poem) {
+    var curated = CURATED[poem.title + '|' + poem.author] || null;
+    var extra = lookupNotes(poem.title, poem.author);
+    var lines = poem.text.split('\n');
+
+    /* 原文面板：逐句可点 */
+    var verseList = document.getElementById('verse-list');
+    if (verseList) {
+      verseList.innerHTML = lines.map(function (ln, i) {
+        var note = curated && curated.notes[i] ? curated.notes[i][1] : '';
+        return (
+          '<div class="verse-row" data-verse="' + i + '">' +
+          '<span class="verse-text">' + esc(ln) + '</span>' +
+          (note ? '<span class="verse-note">' + esc(note) + '</span>' : '') +
+          '</div>'
+        );
+      }).join('');
+      verseList.querySelectorAll('[data-verse]').forEach(function (row) {
+        row.addEventListener('click', function () {
+          verseList.querySelectorAll('[data-verse]').forEach(function (r) {
+            r.classList.toggle('is-active', r === row);
+          });
+        });
+      });
+    }
+
+    /* 注释面板 */
+    var notePanel = document.getElementById('panel-notes');
+    if (notePanel) {
+      notePanel.innerHTML = curated
+        ? '<ul class="note-list">' + curated.notes.map(function (n) {
+            return '<li class="note-item"><strong>' + esc(n[0]) + '</strong><span>' + esc(n[1]) + '</span></li>';
+          }).join('') + '</ul>'
+        : '<div class="empty-state">该篇的逐句注释正在编校中，欢迎到社区广场分享你的理解。</div>';
+    }
+
+    /* 译文面板 */
+    var transPanel = document.getElementById('panel-translation');
+    if (transPanel) {
+      var trans = curated ? curated.translation : (extra && extra.y);
+      transPanel.innerHTML = trans
+        ? '<p class="serif study-prose">' + esc(trans) + '</p>'
+        : '<div class="empty-state">白话译文正在编校中。先读原文，体会字面之下的节奏与气息。</div>';
+    }
+
+    /* 赏析面板（有背景解析时一并展示） */
+    var aprePanel = document.getElementById('panel-appreciation');
+    if (aprePanel) {
+      var apre = curated ? curated.appreciation : (extra && extra.s);
+      var bg = !curated && extra && extra.b;
+      aprePanel.innerHTML = apre
+        ? '<p class="serif study-prose">' + esc(apre) + '</p>' +
+          (bg ? '<p class="serif study-prose study-prose--bg"><strong>创作背景　</strong>' + esc(bg) + '</p>' : '')
+        : '<div class="empty-state">赏析文章正在编校中。' + esc(poem.form) + ' · ' + esc(poem.themes[0]) + '题材，全文 ' + lines.length + ' 行。</div>';
+    }
+  }
+
   /* ---------- 8. 挑战闯关（从诗词库随机出题） ---------- */
   var MODE_NAME = { fill: '填空补全', chain: '上下句接龙', recite: '背诵闯关', exam: '考试闯关', hot: '热门挑战' };
   var QUIZ_PER_RUN = 10;
 
-  /* 可出题的诗：2-12 句、每句 3-10 字（保证干扰项质量） */
+  /* 可出题的诗：quizpool/pN.js 预拆句分块（每次访问随机加载一块），
+   * 句子已按句读拆成 3-10 字半句，保证干扰项质量 */
   var QUIZ_POOL = [];
   var QUIZ_LINES = [];
-  (function buildQuizPool() {
-    POEMS.forEach(function (p) {
-      var lines = (p.text || '')
-        .split('\n')
-        .map(function (s) { return s.trim().replace(/[，。！？；：、,.!?;:]+$/, ''); })
-        .filter(function (s) {
-          return s.length >= 3 && s.length <= 10 && !/[（）()“”‘’《》〈〉「」\[\]a-zA-Z0-9]/.test(s);
-        });
-      if (lines.length >= 2 && lines.length <= 12) {
-        QUIZ_POOL.push({ title: p.title, author: p.author, dynasty: p.dynasty, lines: lines });
-      }
+  function buildQuizPool() {
+    QUIZ_POOL = (window.QUIZ_POOL_DATA || []).map(function (e) {
+      return { title: e[0], author: e[1], dynasty: e[2], lines: e[3] };
     });
+    QUIZ_LINES = [];
     QUIZ_POOL.forEach(function (p) {
       p.lines.forEach(function (l) { QUIZ_LINES.push(l); });
     });
-  })();
+  }
 
-  /* 精选题库（quizbanks.js 提供 window.QUIZ_BANKS），结构与 QUIZ_POOL 一致 */
+  /* 精选题库（banks.js 预解析生成 window.QUIZ_BANKS），结构与 QUIZ_POOL 一致 */
   var BANK_POOLS = { exam: [], hot: [] };
   (function buildBankPools() {
     var banks = window.QUIZ_BANKS || { exam: [], hot: [] };
     ['exam', 'hot'].forEach(function (k) {
-      BANK_POOLS[k] = (banks[k] || []).map(function (p) {
-        /* 诗经/词/古体的段落里常含多个句子，先按句读拆开再取 3-10 字的短句 */
-        var lines = [];
-        (p.text || '').split('\n').forEach(function (seg) {
-          seg.split(/[。！？!?]/).forEach(function (s2) {
-            var t = s2.trim().replace(/^[，；：、,;:]+|[，；：、,;:]+$/g, '');
-            if (t.length >= 3 && t.length <= 10 && !/[（）()“”‘’《》〈〉「」\[\]a-zA-Z0-9]/.test(t)) lines.push(t);
-          });
-        });
-        return { title: p.title, author: p.author, dynasty: p.dynasty, lines: lines };
+      BANK_POOLS[k] = (banks[k] || []).map(function (e) {
+        return { title: e[0], author: e[1], dynasty: e[2], lines: e[3] };
       }).filter(function (p) { return p.lines.length >= 2; });
     });
   })();
@@ -1066,7 +1351,32 @@
   function initChallenge() {
     var stemEl = document.getElementById('quiz-stem');
     var optionsEl = document.getElementById('quiz-options');
-    if (!stemEl || !optionsEl || !QUIZ_POOL.length) return;
+    if (!stemEl || !optionsEl) return;
+
+    if (window.QUIZ_POOL_DATA && window.QUIZ_POOL_DATA.length) {
+      buildQuizPool();
+      bootChallenge(stemEl, optionsEl);
+      return;
+    }
+    /* 题库分块：随机挑一块再开局（懒加载，单次约 3MB） */
+    stemEl.textContent = '题库加载中…';
+    var info = window.QUIZ_POOL_INFO || { chunks: 4 };
+    var no = Math.floor(Math.random() * info.chunks);
+    loadScript('assets/data/quizpool/p' + no + '.js?v=20260909a', function (ok) {
+      if (!ok) {
+        stemEl.textContent = '题库加载失败，请刷新重试';
+        return;
+      }
+      buildQuizPool();
+      bootChallenge(stemEl, optionsEl);
+    });
+  }
+
+  function bootChallenge(stemEl, optionsEl) {
+    if (!QUIZ_POOL.length) {
+      stemEl.textContent = '题库为空，请稍后重试';
+      return;
+    }
 
     var st = { mode: 'fill', deck: [], index: 0, streak: 0, done: 0, correct: 0, wrong: 0, seconds: 0, answered: false };
     var stats = loadChallengeStats();
@@ -1084,6 +1394,50 @@
     var progressText = document.getElementById('daily-progress-text');
     var progressFill = document.getElementById('daily-progress-fill');
     var levelList = document.getElementById('level-list');
+
+    /* --- 闯关高分榜：自己的成绩驱动排名，即时刷新；诗友分数为本地模拟动态 ---
+     * （纯静态站没有服务器，真实的多人实时榜需要后端支持，见页面说明） */
+    var rankListEl = document.getElementById('rank-list');
+    var rankUpdatedEl = document.getElementById('rank-updated');
+    var RIVALS = [
+      { name: '沈砚秋', score: 90 }, { name: '陆栖迟', score: 80 },
+      { name: '白也', score: 70 }, { name: '顾清商', score: 60 },
+      { name: '江晚吟', score: 50 }
+    ];
+    var CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八'];
+    function renderRank() {
+      if (!rankListEl) return;
+      var rows = RIVALS.map(function (r) { return { name: r.name, score: r.score, me: false }; });
+      rows.push({ name: CURRENT_USER || '我', score: stats.bestScore || 0, me: true });
+      rows.sort(function (a, b) { return b.score - a.score; });
+      rankListEl.innerHTML = rows.map(function (r, i) {
+        return (
+          '<div class="rank-row' + (r.me ? ' rank-row--me' : '') + '">' +
+          '<span>' + (CN_NUM[i] || (i + 1)) + '　' + esc(r.name) + (r.me ? '（我）' : '') + '</span>' +
+          '<span>' + r.score + ' 分</span></div>'
+        );
+      }).join('');
+      if (rankUpdatedEl) {
+        var d = new Date();
+        rankUpdatedEl.textContent = '更新于 ' + ('0' + d.getHours()).slice(-2) + ':' +
+          ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+      }
+    }
+    /* 诗友动态：每 20 秒随机一位小幅涨分，榜单自动重排 */
+    setInterval(function () {
+      var r = pickOne(RIVALS);
+      if (r && r.score < 100 && Math.random() < 0.6) {
+        r.score = Math.min(100, r.score + 10);
+        renderRank();
+      }
+    }, 20000);
+    /* 跨标签页同步：别的标签页出了分，这里跟着变 */
+    window.addEventListener('storage', function (e) {
+      if (e.key !== 'shiyun-challenge') return;
+      stats = loadChallengeStats();
+      updateScore();
+      renderRank();
+    });
 
     function newDeck() {
       st.deck = [];
@@ -1161,6 +1515,7 @@
         saveChallengeStats(stats);
       }
       updateScore();
+      renderRank();   /* 得分变化 → 榜单立即重排 */
     }
 
     function hideResult() {
@@ -1292,6 +1647,7 @@
     newDeck();
     render();
     updateScore();
+    renderRank();
   }
 
 
@@ -1301,6 +1657,7 @@
     initMobileMenu();
     initAuthTabs();
     initAuthForm();
+    initAuthUI();
     initHome();
     initLibrary();
     initCommunity();

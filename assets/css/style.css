@@ -1327,3 +1327,22 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
   .quiz-main-card { padding: 26px 22px; min-height: 0; }
   .quiz-main-card .quiz-stem { font-size: 22px; line-height: 38px; }
 }
+
+/* ============ 2026-09-09 性能/登录/榜单/译文配套 ============ */
+/* auth 表单：显隐由 hidden 属性控制（修复内联 display 导致的切换失灵） */
+form[data-panel] { display: flex; flex-direction: column; gap: 18px; }
+form[data-panel][hidden] { display: none; }
+
+/* 表单提示：错误红 / 成功绿 */
+.form-hint.is-error { color: var(--cinnabar); }
+.form-hint.is-ok { color: #3d7a4e; }
+
+/* 顶栏登录态 */
+.auth-user { font-size: 15px; color: var(--ink-700); font-weight: 500; }
+
+/* 闯关高分榜：自己的行高亮 */
+.rank-row--me span { color: var(--cinnabar); font-weight: 600; }
+.rank-updated { font-size: 12px; color: var(--ink-400); margin-top: 10px; }
+
+/* 课堂：背景解析段落 */
+.study-prose--bg { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--ink-200, #d8d2c8); color: var(--ink-600, #6b655c); }
