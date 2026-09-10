@@ -1545,7 +1545,9 @@ form[data-panel][hidden] { display: none; }
 .account-name {
   font-size: 15px; color: var(--ink-700, #4a453d); font-weight: 500;
   max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-decoration: none; transition: color .2s ease;
 }
+a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 .account-signout {
   font-size: 14px; color: var(--ink-400, #9a938a); text-decoration: none;
   transition: color .2s ease;
@@ -1556,6 +1558,26 @@ form[data-panel][hidden] { display: none; }
   font-size: 15px; color: var(--ink-700, #4a453d); text-decoration: none;
 }
 .header-guest a:hover { color: var(--cinnabar, #9c3b2e); }
+
+/* --- 顶栏「我的」入口：头像首字 + 笔名，整块可点 --- */
+.auth-user {
+  display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: none; color: var(--ink-700, #4a453d);
+  padding: 5px 12px 5px 5px; border-radius: 999px;
+  transition: background .2s ease, color .2s ease;
+}
+.auth-user:hover { background: var(--paper, #faf7f1); color: var(--cinnabar, #9c3b2e); }
+.auth-user[aria-current="page"] { background: var(--paper, #faf7f1); }
+.auth-user-avatar {
+  width: 28px; height: 28px; flex: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cinnabar, #9c3b2e); color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1;
+}
+.auth-user-name {
+  font-size: 15px; font-weight: 500;
+  max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* --- 未登录提示条 --- */
 .me-guest-card {

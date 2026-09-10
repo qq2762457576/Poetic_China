@@ -546,16 +546,52 @@
     }
 
     if (!name) return;
+    /* 顶栏登录态：笔名本身必须可点，直接进「我的」。
+     * ⚠️ 早期版本这里是个纯 <span>，用户看到「你好，江心屿」却点不动，
+     *    只能绕道移动端 tabbar 才能进个人中心 —— 不要再改回不可点。
+     *
+     * ⚠️ 也必须用「就地替换」而不是整体 innerHTML 重写：
+     *    library / challenge 的同一个容器里还放着搜索图标，
+     *    整体重写会把它们一起抹掉。这里只摘掉指向 auth.html 的那两条链接。 */
     document.querySelectorAll('.header-actions .only-desktop').forEach(function (box) {
-      if (!box.querySelector('a[href="auth.html"]')) return;
-      box.innerHTML =
-        '<span class="auth-user">你好，' + esc(name) + '</span>' +
-        '<a class="btn btn--ghost" style="padding:9px 20px;cursor:pointer;" data-logout>退出</a>';
+      var authLinks = box.querySelectorAll('a[href="auth.html"]');
+      if (!authLinks.length) return;
+      var onMe = /me\.html$/.test(location.pathname);
+      var userLink = document.createElement('a');
+      userLink.className = 'auth-user';
+      userLink.href = 'me.html';
+      if (onMe) userLink.setAttribute('aria-current', 'page');
+      userLink.setAttribute('data-user-entry', '');
+      userLink.innerHTML =
+        '<span class="auth-user-avatar">' + esc(name[0] || '诗') + '</span>' +
+        '<span class="auth-user-name">' + esc(name) + '</span>';
+      var outLink = document.createElement('a');
+      outLink.className = 'btn btn--ghost';
+      outLink.style.cssText = 'padding:9px 20px;cursor:pointer;';
+      outLink.setAttribute('data-logout', '');
+      outLink.textContent = '退出';
+      /* 用第一条 auth 链接的位置当锚点，其余 auth 链接与旧登出链接一并移除 */
+      var anchor = authLinks[0];
+      box.insertBefore(userLink, anchor);
+      box.insertBefore(outLink, anchor);
+      authLinks.forEach(function (a) { a.parentNode && a.parentNode.removeChild(a); });
+      var stale = box.querySelectorAll('[data-logout]');
+      Array.prototype.forEach.call(stale, function (n) {
+        if (n !== outLink && n.parentNode) n.parentNode.removeChild(n);
+      });
     });
+    /* 移动菜单：登录后把「登录 / 注册」那条换成「退出登录（笔名）」，
+     * 但「我的」那一项保持原样可点 —— 两者是并列的两条，别合并。 */
     document.querySelectorAll('.mobile-menu a[href="auth.html"]').forEach(function (a) {
       a.textContent = '退出登录（' + name + '）';
       a.removeAttribute('href');
       a.setAttribute('data-logout', '');
+    });
+    /* 移动菜单里的「我的」补上笔名，让用户一眼确认身份 */
+    document.querySelectorAll('.mobile-menu a[data-tab="me"]').forEach(function (a) {
+      if (a.__named) return;
+      a.__named = 1;
+      a.textContent = '我的 · ' + name;
     });
   }
 
