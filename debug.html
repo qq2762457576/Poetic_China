@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>云端连接自检 · 诗意中国</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260910a" />
+<style>
+  .dbg-wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  .dbg-h { font-size: 26px; margin: 0 0 8px; }
+  .dbg-sub { color: var(--ink-500, #7a746a); font-size: 14px; margin: 0 0 28px; line-height: 1.7; }
+  .dbg-card { background: #fff; border: 1px solid var(--ink-200, #d8d2c8);
+              border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+  .dbg-card h3 { font-size: 16px; margin: 0 0 14px; }
+  .dbg-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .dbg-field label { font-size: 13px; color: var(--ink-600, #6b655c); }
+  .dbg-field input { padding: 10px 12px; border: 1px solid var(--ink-200, #d8d2c8);
+                     border-radius: 8px; font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
+  .dbg-field input:focus { outline: none; border-color: var(--cinnabar, #9c3b2e); }
+  .dbg-hint { font-size: 12px; color: var(--ink-400, #9a938a); }
+  .dbg-btn { padding: 11px 26px; background: var(--cinnabar, #9c3b2e); color: #fff;
+             border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .dbg-btn:hover { opacity: .88; }
+  .dbg-step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px dashed rgba(120,110,96,.2);
+              font-size: 14px; align-items: flex-start; }
+  .dbg-step:last-child { border-bottom: none; }
+  .dbg-ico { flex: none; width: 20px; text-align: center; font-weight: 700; }
+  .dbg-ok { color: #3d7a4e; } .dbg-no { color: var(--cinnabar, #9c3b2e); }
+  .dbg-run { color: var(--ink-400, #9a938a); }
+  .dbg-msg { color: var(--ink-500, #7a746a); font-size: 12px; margin-top: 3px;
+             font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+  .dbg-steps { counter-reset: s; }
+  .dbg-where { font-size: 14px; line-height: 1.9; }
+  .dbg-where b { color: var(--cinnabar, #9c3b2e); }
+  .dbg-where ol { padding-left: 20px; margin: 8px 0; }
+  code.dbg-code { background: var(--ink-100, #efeae1); padding: 2px 7px; border-radius: 4px;
+                  font-size: 13px; word-break: break-all; }
+  .dbg-warn { background: #fdf6f4; border-left: 3px solid var(--cinnabar, #9c3b2e);
+              padding: 10px 14px; font-size: 13px; line-height: 1.7; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="dbg-wrap">
+  <h1 class="dbg-h serif">云端连接自检</h1>
+  <p class="dbg-sub">
+    填好 URL 和密钥后点「开始自检」，会逐项测试连通性并给出具体错误。<br />
+    这个页面只在你本机运行，输入的内容不会上传、不会保存到仓库。
+  </p>
+
+  <div class="dbg-card">
+    <h3>① 去哪里找这两个值</h3>
+    <div class="dbg-where">
+      <p><b>路径 A（推荐）</b>：左侧栏最底部点 <b>Project Settings</b>（齿轮图标）→ 上方标签选 <b>API</b> → 页面里找这两块：</p>
+      <ul>
+        <li><b>Project URL</b> —— 长这样 <code class="dbg-code">https://abcdefgh.supabase.co</code></li>
+        <li><b>Project API keys</b> → 复制 <b>anon / publishable</b> 那一条（旧版是一长串 <code class="dbg-code">eyJhbGciOi...</code>，新版是 <code class="dbg-code">sb_publishable_...</code>，两种都能用）</li>
+      </ul>
+      <p style="margin-top:14px;"><b>路径 B</b>：页面右上角有个绿色 <b>Connect</b> 按钮 → 点开选 <b>App frameworks</b> 标签 → 直接显示 <code class="dbg-code">SUPABASE_URL</code> 和 <code class="dbg-code">SUPABASE_ANON_KEY</code>，复制即可。</p>
+      <div class="dbg-warn">
+        ⚠️ 千万不要复制 <b>service_role</b> / <b>secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b>anon / publishable</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="dbg-card">
+    <h3>② 填进来测一测</h3>
+    <div class="dbg-field">
+      <label>Project URL</label>
+      <input id="dbg-url" placeholder="https://abcdefgh.supabase.co" />
+      <span class="dbg-hint">末尾的斜杠会自动去掉，带不带都行</span>
+    </div>
+    <div class="dbg-field">
+      <label>anon / publishable key</label>
+      <input id="dbg-key" placeholder="eyJhbGciOi... 或 sb_publishable_..." />
+    </div>
+    <button class="dbg-btn" id="dbg-run">开始自检</button>
+    <span class="dbg-hint" style="margin-left:12px;" id="dbg-src"></span>
+  </div>
+
+  <div class="dbg-card dbg-steps" id="dbg-out">
+    <h3>③ 自检结果</h3>
+    <div class="dbg-step"><span class="dbg-ico dbg-run">·</span><div>等待开始<div class="dbg-msg">填好上面两项后点按钮</div></div></div>
+  </div>
+</div>
+
+<script src="assets/js/config.js?v=20260910a"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var out = $('dbg-out');
+
+  /* 预填 config.js 里已配置的值 */
+  var cfg = window.SHICI_CONFIG || {};
+  if (cfg.supabaseUrl) { $('dbg-url').value = cfg.supabaseUrl; $('dbg-src').textContent = '（已读取 config.js 的配置）'; }
+  if (cfg.supabaseAnonKey) { $('dbg-key').value = cfg.supabaseAnonKey; }
+
+  function step(status, title, msg) {
+    var ico = status === 'ok' ? '✓' : (status === 'no' ? '✗' : '·');
+    var cls = status === 'ok' ? 'dbg-ok' : (status === 'no' ? 'dbg-no' : 'dbg-run');
+    var el = document.createElement('div');
+    el.className = 'dbg-step';
+    el.innerHTML = '<span class="dbg-ico ' + cls + '">' + ico + '</span><div>' +
+      title + (msg ? '<div class="dbg-msg">' + String(msg).replace(/</g, '&lt;') + '</div>' : '') + '</div>';
+    out.appendChild(el);
+  }
+  function reset() { out.innerHTML = '<h3>③ 自检结果</h3>'; }
+
+  function run() {
+    reset();
+    var url = ($('dbg-url').value || '').trim().replace(/\/+$/, '');
+    var key = ($('dbg-key').value || '').trim();
+
+    /* 1. URL 格式 */
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/.test(url)) {
+      step('no', 'URL 格式不对',
+        url ? '当前值：' + url + ' — 应该形如 https://abcdefgh.supabase.co，注意前面是 https://，末尾不要带 /' : '还没填 URL');
+      return;
+    }
+    step('ok', 'URL 格式正确', url);
+
+    /* 2. key 格式 */
+    if (key.length < 40) { step('no', '密钥太短，多半没复制全', '当前长度 ' + key.length + '，正常应超过 100 字符'); return; }
+    if (/service_role/i.test(key) || key.indexOf('sb_secret_') === 0) {
+      step('no', '这是管理员密钥，不能用', '请换成 anon / publishable 那一条'); return;
+    }
+    step('ok', '密钥格式正确', key.slice(0, 12) + '…（长度 ' + key.length + '）');
+
+    /* 3. 加载 SDK */
+    step('run', '正在加载 Supabase SDK…');
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
+    s.onload = function () { test(url, key); };
+    s.onerror = function () {
+      step('no', 'SDK 加载失败', '多半是网络问题（jsdelivr 被墙）。可改用 unpkg：告诉我，我换 CDN');
+    };
+    document.head.appendChild(s);
+  }
+
+  function test(url, key) {
+    var c = window.supabase.createClient(url, key);
+
+    /* 4. 建表检查 */
+    c.from('posts').select('id,title,author,status,likes,created_at,poem_id,kind,body,user_id').limit(1)
+      .then(function (r) {
+        if (r.error) {
+          var m = r.error.message || '';
+          if (/does not exist|relation/i.test(m)) {
+            step('no', 'posts 表不存在', '建表 SQL 没执行成功。回 SQL Editor 重跑 supabase/schema.sql：' + m);
+          } else if (/permission denied/i.test(m)) {
+            step('no', '表在，但没有读权限', '缺 grant。请执行 schema.sql 第 2 段（授权）');
+          } else {
+            step('no', '读不到 posts 表', m + ' | code=' + (r.error.code || ''));
+          }
+          return null;
+        }
+        step('ok', 'posts 表可读（列齐全）');
+        return c.from('comments').select('id,post_id,author,body,created_at,user_id').limit(1);
+      })
+      .then(function (r) {
+        if (r === null) return null;
+        if (r && r.error) { step('no', 'comments 表有问题', r.error.message); return null; }
+        step('ok', 'comments 表可读');
+        return c.rpc('increment_likes', { p_post_id: '00000000-0000-0000-0000-000000000000' });
+      })
+      .then(function (r) {
+        if (r === null) return;
+        /* 传一个不存在的 id，只要「函数存在且能调用」就算通过（影响 0 行） */
+        if (r && r.error && /function|does not exist/i.test(r.error.message)) {
+          step('no', '点赞函数 increment_likes 不存在', '请执行 schema.sql 第 4 段（函数）');
+        } else {
+          step('ok', '点赞函数可用');
+        }
+        finish(url, key);
+      });
+  }
+
+  function finish(url, key) {
+    step('ok', '全部通过 — 可以填进 config.js 了',
+      'supabaseUrl: "' + url + '"\nsupabaseAnonKey: "' + key.slice(0, 16) + '…"');
+    var tip = document.createElement('div');
+    tip.className = 'dbg-warn';
+    tip.innerHTML = '把上面两项填进 <b>assets/js/config.js</b>，保存后重新打开社区页即可。' +
+      '填完记得<b>提交推送</b>，线上才会生效。';
+    out.appendChild(tip);
+  }
+
+  $('dbg-run').addEventListener('click', run);
+})();
+</script>
+</body>
+</html>

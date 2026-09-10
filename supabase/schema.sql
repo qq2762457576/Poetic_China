@@ -79,6 +79,15 @@ alter table public.posts    enable row level security;
 alter table public.comments enable row level security;
 
 -- 帖子：所有人（含游客）可读已通过的
+-- 清理早期版本遗留的中文名策略（已执行过旧版脚本的库不会产生重复策略）
+drop policy if exists "posts: 公开可读已通过" on public.posts;
+drop policy if exists "posts: 作者可读自己的" on public.posts;
+drop policy if exists "posts: 登录可发"       on public.posts;
+drop policy if exists "posts: 作者可改"       on public.posts;
+drop policy if exists "comments: 公开可读"    on public.comments;
+drop policy if exists "comments: 登录可评"    on public.comments;
+drop policy if exists "comments: 作者可删"    on public.comments;
+
 drop policy if exists posts_select_public on public.posts;
 create policy posts_select_public
   on public.posts for select

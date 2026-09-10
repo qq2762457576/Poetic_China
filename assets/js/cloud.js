@@ -10,7 +10,7 @@
  * ============================================================ */
 (function () {
   var CFG = window.SHICI_CONFIG || {};
-  var URL = String(CFG.supabaseUrl || '').trim();
+  var URL = String(CFG.supabaseUrl || '').trim().replace(/\/+$/, ''); /* 容忍末尾斜杠 */
   var KEY = String(CFG.supabaseAnonKey || '').trim();
   var CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
 
@@ -166,9 +166,13 @@
       like: function (id, cb) {
         ensure(function (c) {
           if (!c) return cb(false);
-          /* 参数名必须匹配 schema.sql 里的 p_post_id */
+          /* 兼容两种函数签名：新库 p_post_id，早期库 post_id。
+             已经建过旧版库的站点不用重跑 SQL 也能点赞。 */
           c.rpc('increment_likes', { p_post_id: id }).then(function (r) {
-            cb(!r.error);
+            if (!r.error) return cb(true);
+            c.rpc('increment_likes', { post_id: id }).then(function (r2) {
+              cb(!r2.error);
+            });
           });
         });
       },

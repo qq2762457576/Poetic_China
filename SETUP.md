@@ -57,10 +57,18 @@ Supabase 有两个执行按钮，**Run** 执行全部，**Run selected** 只执�
 
 ## 3. 拿密钥并填进配置
 
-1. 左侧 **Project Settings**（齿轮）→ **API**
-2. 复制两个值：
-   - **Project URL**：形如 `https://abcdefgh.supabase.co`
-   - **anon public**：一长串 `eyJhbGci...`（这是公开密钥，本来就是给前端用的）
+**两条路径任选，都能拿到：**
+
+**路径 A** — 左侧栏最底部 **Project Settings**（齿轮）→ 上方标签 **API** → 页面里找：
+- **Project URL**：`https://abcdefgh.supabase.co`
+- **Project API keys** → 复制 **anon / publishable** 那一条
+
+**路径 B** — 页面右上角绿色 **Connect** 按钮 → **App frameworks** 标签 → 直接列出 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY`
+
+密钥两种格式都正常：旧版是 `eyJhbGciOi...` 长串，新版是 `sb_publishable_...`。
+
+> 找不到时：**打开本项目根目录的 `debug.html`**，里面有截图级的位置说明，还能把值粘进去一键自检连通性，比肉眼找快。
+
 3. 打开 `assets/js/config.js`，填进去：
 
 ```js
@@ -90,7 +98,28 @@ window.SHICI_CONFIG = {
 2. **换一个浏览器**（或用无痕窗口）打开社区页
 3. 能看到刚才那条分享 = 云端通了
 
-看不到的话，按 F12 看 Console 有没有红色报错，八成是密钥填错或 RLS 没执行。
+看不到的话，**先打开 `debug.html` 自检**——它会逐项告诉你卡在哪一步（URL 格式 / 密钥类型 / 表是否存在 / 权限 / 函数），比看控制台快。八成是密钥填错或 RLS 没执行。
+
+## 6. 已建过旧版库的额外一步（可选）
+
+如果你早期就执行过建表 SQL，库里可能还是旧版的中文名安全策略。重跑一次现在的 `schema.sql` 即可自动清理并换成新版（脚本幂等，重复执行不会报错、不会产生重复数据）。
+
+只跑第 4 段（点赞函数）也可以，不改表结构：
+
+```sql
+create or replace function public.increment_likes(p_post_id uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.posts set likes = likes + 1 where id = p_post_id;
+$$;
+
+grant execute on function public.increment_likes(uuid) to anon, authenticated;
+```
+
+> 不跑也行：前端已做兼容，旧参数名 `post_id` 的库同样能点赞。但旧版函数没有 `security definer`，游客点赞可能被安全策略拦下。
 
 ---
 
