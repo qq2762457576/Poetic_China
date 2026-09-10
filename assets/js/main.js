@@ -12,6 +12,27 @@
     });
   }
 
+  /* 骨架屏：等云端数据时用同形灰块占位，避免页面空荡得像卡住。
+   * ⚠️ 只画形状，不放任何文字或数字 —— 否则会被误读成真实内容（PRD 第四十条）。
+   * 视觉装饰对读屏用户无意义，故配一句 .sr-only 文字说明进度。 */
+  function skeletonCards(n, label) {
+    var one =
+      '<div class="skeleton-card" aria-hidden="true">' +
+        '<div class="skel-head">' +
+          '<div class="skel-avatar"></div>' +
+          '<div class="skel-line skel-line--xs" style="max-width:120px;"></div>' +
+        '</div>' +
+        '<div class="skel-line skel-line--lg"></div>' +
+        '<div class="skel-line skel-line--md"></div>' +
+        '<div class="skel-line skel-line--sm"></div>' +
+      '</div>';
+    var out = '';
+    for (var i = 0; i < (n || 2); i++) out += one;
+    return '<div class="skeleton-list">' +
+      '<span class="sr-only">' + esc(label || '内容载入中') + '</span>' +
+      out + '</div>';
+  }
+
   function store(key, fallback) {
     try {
       var v = JSON.parse(localStorage.getItem(key));
@@ -703,7 +724,7 @@
     /* --- 4. 我的分享：从全站信息流里筛出自己发布的 --- */
     var postsBox = document.getElementById('me-posts');
     if (postsBox && name) {
-      postsBox.innerHTML = '<div class="empty-state">正在载入…</div>';
+      postsBox.innerHTML = skeletonCards(2, '正在载入你的分享');
       loadFeed(function (all) {
         var mine = all.filter(function (p) { return p.author === name; });
         if (!mine.length) {
@@ -1440,7 +1461,7 @@
   function renderFeed() {
     var list = document.getElementById('post-list');
     if (!list) return;
-    list.innerHTML = '<div class="empty-state">正在载入诗友分享…</div>';
+    list.innerHTML = skeletonCards(3, '正在载入诗友分享');
     /* 云端模式：所有访客（含未登录）都能看到全站已通过的分享 */
     loadFeed(function (all) {
       list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
@@ -1480,7 +1501,7 @@
 
     /* 云端模式：向数据库要待审队列（RLS 会挡下无权限的人） */
     if (window.Cloud && window.Cloud.ready && window.Cloud.posts.pending) {
-      if (queueEl) queueEl.innerHTML = '<div class="empty-state">正在载入待审队列…</div>';
+      if (queueEl) queueEl.innerHTML = skeletonCards(2, '正在载入待审队列');
       window.Cloud.posts.pending(function (rows) {
         if (!rows) {
           /* 拉取失败（如未执行 patch_review_v2.sql）→ 说清楚原因，别假装队列为空 */

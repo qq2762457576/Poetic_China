@@ -2027,3 +2027,85 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   .legal-body h2 { font-size: 18px; margin-top: 32px; }
   .legal-toc ol { columns: 1; }
 }
+
+/* ==========================================================
+   骨架屏（loading skeleton）
+   用途：云端数据（社区信息流 / 待审队列 / 我的分享）要等网络，
+   这段时间若只显示一行「正在载入…」，页面会显得空荡且像卡住。
+   骨架屏用与真实内容同形的灰块占位，让用户预判布局、感知进度。
+   ⚠️ 只做形状占位，不放任何文字或数字 —— 避免被误读成真实内容。
+   ========================================================== */
+.skeleton-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+.skeleton-card + .skeleton-card { margin-top: 18px; }
+
+.skel-line {
+  height: 12px;
+  border-radius: 2px;
+  /* 明暗往复：用 background-position 走位模拟「扫光」，
+     比 opacity 闪烁更含蓄，符合水墨淡雅的调性 */
+  background: linear-gradient(
+    90deg,
+    var(--sand) 0%,
+    var(--chip) 40%,
+    var(--sand) 80%
+  );
+  background-size: 300% 100%;
+  animation: skel-sweep 1.6s ease-in-out infinite;
+}
+.skel-line + .skel-line { margin-top: 10px; }
+
+/* 宽度按典型文案长度错落，避免看起来像表格 */
+.skel-line--lg  { width: 58%; height: 15px; }
+.skel-line--md  { width: 86%; }
+.skel-line--sm  { width: 42%; }
+.skel-line--xs  { width: 26%; height: 11px; }
+
+.skel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.skel-avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--chip);
+  animation: skel-sweep 1.6s ease-in-out infinite;
+  background-image: linear-gradient(90deg, var(--sand) 0%, var(--chip) 40%, var(--sand) 80%);
+  background-size: 300% 100%;
+}
+.skel-head .skel-line { flex: 1; margin-top: 0; }
+
+@keyframes skel-sweep {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+/* 尊重「减少动态效果」偏好：改为静态灰块，不做扫光 */
+@media (prefers-reduced-motion: reduce) {
+  .skel-line,
+  .skel-avatar {
+    animation: none;
+    background: var(--chip);
+  }
+}
+
+/* 读屏用户不需要看到装饰性骨架，用文字告知进度即可 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
