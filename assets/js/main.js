@@ -190,8 +190,39 @@
     };
   })();
 
-  /* 当前用户：登录后为笔名；未登录沿用站长（默认审核人） */
-  var CURRENT_USER = Auth.current() || '段瑜';
+  /* 当前用户：登录后为笔名；未登录为 null（不再默认站长，否则人人都有审核权） */
+  var CURRENT_USER = Auth.current() || null;
+
+  /* ---------- 审核权限 ----------
+   * 规则：审核权默认只有站长（config.js 的 admins 邮箱）拥有，
+   *       且只有站长能把审核权授予他人（被授权人可审核，但不能再授权）。
+   * 判断依据一律用「邮箱」——昵称可重名，邮箱是账号唯一标识。 */
+  function myEmail() {
+    if (window.Cloud && window.Cloud.auth && window.Cloud.auth.current) {
+      var p = window.Cloud.auth.current();
+      if (p && p.account) return String(p.account).toLowerCase();
+    }
+    /* 本地模式：会话里存的就是账号（邮箱或手机号） */
+    var s = store(SKEY, null);
+    return (s && s.account) ? String(s.account).toLowerCase() : '';
+  }
+  function adminEmails() {
+    var cfg = window.SHICI_CONFIG || {};
+    return (cfg.admins || []).map(function (e) { return String(e).toLowerCase(); });
+  }
+  /* 是否站长（管理员） */
+  function isAdmin() {
+    var me = myEmail();
+    return !!me && adminEmails().indexOf(me) !== -1;
+  }
+  /* 缓存云端拉回来的审核人名单，避免每次渲染都请求 */
+  var reviewerEmails = null;
+  /* 是否具备审核资格：站长 或 在授权名单内 */
+  function canReview() {
+    if (!CURRENT_USER) return false;   /* 未登录一律无审核权 */
+    if (isAdmin()) return true;
+    return !!(reviewerEmails && myEmail() && reviewerEmails.indexOf(myEmail()) !== -1);
+  }
 
   /* ---------- 1. 诗词数据层（索引 + 正文懒加载） ---------- */
   var DYNASTY_KEY = { '唐': '唐', '宋': '宋', '先秦': '先秦', '汉魏六朝': '汉魏六朝', '元': '元明清', '明': '明', '清': '元明清', '近现代': '近现代' };
@@ -883,10 +914,33 @@
 
   function getPosts() { return store('shici_posts', []); }
   function setPosts(posts) { saveStore('shici_posts', posts); }
-  function getReviewers() {
-    var r = store('shici_reviewers', null);
-    if (!r || !r.length) { r = [CURRENT_USER]; saveStore('shici_reviewers', r); }
-    return r;
+
+  /* ---------- 审核人名单（云端权威） ----------
+   * 规则：站长（config.admins 里的邮箱）天然是审核人，不占名额、不可被移除。
+   *       被授权的审核人存在云端 reviewers 表，只有站长能增删（RLS 兜底）。
+   *       早期版本把名单存在 localStorage 且「第一个到访者自动成为审核人」，
+   *       那等于把审核权送给任何人，已废弃。 */
+  var ADMIN_NAME = '站长';
+
+  /* 拉取云端审核人邮箱（邮箱是账号唯一标识，昵称会重名）→ 缓存到 reviewerEmails */
+  function loadReviewers(cb) {
+    if (!window.Cloud || !window.Cloud.reviewers) { if (cb) cb(); return; }
+    window.Cloud.reviewers.list(function (emails) {
+      if (emails) reviewerEmails = emails.map(function (e) { return String(e).toLowerCase(); });
+      if (cb) cb();
+    });
+  }
+
+  /* 面板里展示用：站长 + 云端授权名单 */
+  function reviewerRows() {
+    var rows = [{ email: '', name: ADMIN_NAME, me: isAdmin(), admin: true }];
+    var me = myEmail();
+    (reviewerEmails || []).forEach(function (e) {
+      /* 站长自己的邮箱不重复列 */
+      if (adminEmails().indexOf(e) !== -1) return;
+      rows.push({ email: e, name: e, me: e === me, admin: false });
+    });
+    return rows;
   }
 
   /* ---------- 评论：云端优先，本地兜底 ---------- */
@@ -1108,10 +1162,10 @@
   function renderModeration() {
     var panel = document.getElementById('moderation-panel');
     if (!panel) return;
-    var reviewers = getReviewers();
-    var isReviewer = reviewers.indexOf(CURRENT_USER) !== -1;
-    panel.hidden = !isReviewer;
-    if (!isReviewer) return;
+
+    /* 没有审核资格的人，连面板都看不到（不是禁用按钮，是整个不渲染） */
+    panel.hidden = !canReview();
+    if (panel.hidden) return;
 
     var pending = getPosts().filter(function (p) { return p.status === 'pending'; });
     var queueEl = document.getElementById('moderation-queue');
@@ -1139,16 +1193,29 @@
       fillClassicBodies(queueEl);
     }
 
-    /* 审核人列表 */
+    /* 审核人列表：站长置顶且不可移除 */
     var reviewerList = document.getElementById('reviewer-list');
     if (reviewerList) {
-      reviewerList.innerHTML = reviewers.map(function (name) {
-        var isOwner = name === CURRENT_USER;
-        return (
-          '<span class="chip chip--active">' + esc(name) + (isOwner ? '（我）' : '') +
-          (isOwner ? '' : ' <a data-remove-reviewer="' + esc(name) + '" title="移出审核人">×</a>') + '</span>'
-        );
+      reviewerList.innerHTML = reviewerRows().map(function (r) {
+        var label = r.admin ? '站长' : esc(r.name);
+        var tail = r.admin ? '（掌印）' : (r.me ? '（我）' : '');
+        /* 只有站长能移除他人；站长本人永远保留 */
+        var rm = (isAdmin() && !r.admin)
+          ? ' <a data-remove-reviewer="' + esc(r.email) + '" title="移出审核人">×</a>'
+          : '';
+        return '<span class="chip chip--active">' + label + tail + rm + '</span>';
       }).join('');
+    }
+
+    /* 授权表单：只有站长看得到、能提交 */
+    var grantBox = document.getElementById('reviewer-grant');
+    if (grantBox) grantBox.hidden = !isAdmin();
+
+    var hintEl = document.getElementById('reviewer-hint');
+    if (hintEl) {
+      hintEl.textContent = isAdmin()
+        ? '你是站长，可把审核权授予他人，也可随时收回。'
+        : '审核权由站长授予，如被移除则需重新授权。';
     }
   }
 
@@ -1157,7 +1224,10 @@
     if (!feed) return;
 
     renderFeed();
+    /* 先按「未登录/非站长」渲染（面板默认隐藏），再拉云端名单复渲染一次，
+     * 避免网络慢时把审核面板闪给不该看的人 */
     renderModeration();
+    loadReviewers(renderModeration);
 
     /* --- 发布：两种模式 --- */
     var card = document.getElementById('compose');
@@ -1332,30 +1402,42 @@
       });
     }
 
-    /* 授权审核人 */
+    /* 授权审核人（仅站长可提交；数据写云端 reviewers 表） */
     var addBtn = document.getElementById('add-reviewer');
     var addInput = document.getElementById('new-reviewer-name');
     if (addBtn && addInput) {
       addBtn.addEventListener('click', function () {
-        var name = addInput.value.trim();
-        if (!name) return;
-        var reviewers = getReviewers();
-        if (reviewers.indexOf(name) === -1) {
-          reviewers.push(name);
-          saveStore('shici_reviewers', reviewers);
+        if (!isAdmin()) return;
+        var email = addInput.value.trim().toLowerCase();
+        if (!email) return;
+        /* 必须是邮箱：昵称会重名，权限判断认不出是谁 */
+        if (email.indexOf('@') === -1) {
+          var tip = document.getElementById('reviewer-hint');
+          if (tip) tip.textContent = '请填对方的登录邮箱（昵称会重名，认不准人）。';
+          return;
         }
-        addInput.value = '';
-        renderModeration();
+        if (!window.Cloud || !window.Cloud.reviewers) return;
+        window.Cloud.reviewers.add(email, function (ok) {
+          var tip = document.getElementById('reviewer-hint');
+          if (!ok) {
+            if (tip) tip.textContent = '授权失败：请确认 SQL 脚本已执行，且你已登录站长账号。';
+            return;
+          }
+          addInput.value = '';
+          loadReviewers(renderModeration);
+        });
       });
     }
     var reviewerList = document.getElementById('reviewer-list');
     if (reviewerList) {
       reviewerList.addEventListener('click', function (e) {
         var rm = e.target.closest('[data-remove-reviewer]');
-        if (!rm) return;
-        var reviewers = getReviewers().filter(function (n) { return n !== rm.getAttribute('data-remove-reviewer'); });
-        saveStore('shici_reviewers', reviewers);
-        renderModeration();
+        if (!rm || !isAdmin()) return;
+        var email = rm.getAttribute('data-remove-reviewer');
+        if (!window.Cloud || !window.Cloud.reviewers) return;
+        window.Cloud.reviewers.remove(email, function () {
+          loadReviewers(renderModeration);
+        });
       });
     }
   }

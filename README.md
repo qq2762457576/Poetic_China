@@ -24,7 +24,7 @@
 | 诗词库 | `library.html` | 全文/正文检索、朝代·体裁·主题筛选、四种排序、分页浏览 |
 | 诗词课堂 | `study.html?id=N` | 逐句注译（译文/赏析/创作背景）、打卡、收藏、上下首切换 |
 | 挑战闯关 | `challenge.html` | 填空 / 接句 / 背诵三模式，六种难度，连击计分，跨标签页同步 |
-| 社区广场 | `community.html` | 分享经典 + 原创投稿 + 审核队列 + 评论点赞 |
+| 社区广场 | `community.html` | 分享经典 + 原创投稿 + 审核队列 + 评论点赞；审核权由站长授予 |
 | 注册登录 | `auth.html` | Supabase Auth 托管，密码服务端 bcrypt 加密 |
 
 **数据存储策略**（未登录也能用）：
@@ -100,14 +100,15 @@ python -m http.server 8000
 ```js
 window.SHICI_CONFIG = {
   supabaseUrl: 'https://<你的项目>.supabase.co',
-  supabaseAnonKey: '<你的 anon / publishable key>'
+  supabaseAnonKey: '<你的 anon / publishable key>',
+  admins: ['你的站长邮箱@example.com']   // 站长账号，见「审核权限」
 };
 ```
 
 然后到 Supabase 后台依次执行：
 
 1. **SQL Editor** → 粘贴 `supabase/schema.sql` 全文 → Run（社区功能）
-2. **SQL Editor** → 粘贴 `supabase/schema_user_data.sql` 全文 → Run（学习数据同步）
+2. **SQL Editor** → 粘贴 `supabase/schema_user_data.sql` 全文 → Run（学习数据同步 + 审核人名单）
 
 ### 3. 关闭邮箱验证（重要）
 
@@ -116,6 +117,22 @@ Supabase 免费版内置邮件服务**每小时仅发送 3 封**，开启邮箱�
 **Authentication → Sign In / Providers → Email → 关闭 `Confirm email`**
 
 同时确认 **Authentication → URL Configuration → Site URL** 填的是你的站点地址。
+
+### 4. 审核权限
+
+社区分享内容需要审核后才公开。审核权**默认只在站长手里**，由站长决定授予谁。
+
+- **谁是站长**：`assets/js/config.js` 里 `admins` 数组中的邮箱，需同时在
+  `supabase/schema_user_data.sql` 第 3 段 `is_admin()` 函数内登记（两处要一致）。
+- **怎么授权**：用站长账号登录 → 进入**社区**页 → 右侧「审核中心」面板底部
+  填入对方的**登录邮箱** → 点「授权」。对方下次登录即可看到审核面板。
+- **怎么收回**：点击名单里对方名字后的 `×`。站长自己不可被移除。
+- **谁能操作**：只有站长能看到授权输入框；普通用户**连审核面板都不会出现**。
+
+权限做了双层兜底：前端 `canReview()` 控制面板显隐，数据库 `reviewers` 表的 RLS 策略
+限制只有站长能增删——即便有人绕过前端直接调接口，写操作也会被数据库拒绝。
+
+> 想换站长，改 `config.js` 的 `admins` + 重跑 SQL 第 3 段即可，无需改其他代码。
 
 ---
 

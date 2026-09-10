@@ -217,6 +217,37 @@
       }
     },
 
+    /* ---------- 审核人名单 ----------
+     * 读取：任何人都能读（渲染名单用）。
+     * 写入：只有站长能写 —— 前端在 main.js 拦一道，数据库 RLS 再拦一道。
+     * 即便有人绕过前端直接调接口，也会被 reviewers 表策略挡掉。 */
+    reviewers: {
+      list: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          c.from('reviewers').select('email').then(function (r) {
+            cb(r.error ? null : (r.data || []).map(function (x) {
+              return String(x.email || '').toLowerCase();
+            }));
+          });
+        });
+      },
+      add: function (email, cb) {
+        ensure(function (c) {
+          if (!c) return cb && cb(false);
+          c.from('reviewers').insert({ email: String(email).toLowerCase() })
+            .then(function (r) { cb && cb(!r.error, r.error && r.error.message); });
+        });
+      },
+      remove: function (email, cb) {
+        ensure(function (c) {
+          if (!c) return cb && cb(false);
+          c.from('reviewers').delete().eq('email', String(email).toLowerCase())
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      }
+    },
+
     /* ---------- 学习进度 / 收藏 / 成绩（登录后走云端） ---------- */
     /* 读：返回 id 数组；写：fire-and-forget，失败不影响本地体验 */
     learned: {
