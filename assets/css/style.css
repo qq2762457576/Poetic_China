@@ -33,6 +33,9 @@
   --radius: 3px;
   --container: 1440px;
   --tabbar-h: 62px;
+  /* 全面屏安全区：iPhone 底部横条 / 圆角。graceful fallback 到 0 */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 *,
@@ -793,8 +796,8 @@ input, textarea { font: inherit; color: inherit; }
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 50;
-  height: var(--tabbar-h);
-  padding: 10px 12px;
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding: 10px 12px calc(10px + var(--safe-bottom));
   background: var(--card);
   border-top: 1px solid var(--line);
 }
@@ -832,7 +835,10 @@ input, textarea { font: inherit; color: inherit; }
 /* ---------- 响应式：手机 ---------- */
 @media (max-width: 768px) {
   .container { padding: 0 20px; }
-  body { padding-bottom: var(--tabbar-h); }
+  /* 底部留白 = tabbar 高度 + 安全区，否则最后一行内容会被 tabbar 压住 */
+  body { padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom)); }
+  /* 顶栏避让刘海 / 灵动岛 */
+  .site-header { padding-top: var(--safe-top); }
 
   .only-desktop { display: none !important; }
   .only-mobile { display: inline-flex !important; }

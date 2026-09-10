@@ -401,12 +401,48 @@
     });
   }
 
+  /* 移动端汉堡菜单
+   * 要点：① 同步 aria-expanded（无障碍，PRD 第二十八条）
+   *      ② 点了菜单里的链接要自动收起 —— 否则跳转后菜单仍敞着遮住页面
+   *      ③ 点菜单外 / 按 Esc 关闭 —— 手机上没有「点空白处」的习惯，但 Esc 对
+   *         外接键盘和读屏用户是必需出口 */
   function initMobileMenu() {
     var btn = document.querySelector('[data-menu-toggle]');
     var menu = document.querySelector('.mobile-menu');
     if (!btn || !menu) return;
-    btn.addEventListener('click', function () {
-      menu.classList.toggle('is-open');
+
+    function setOpen(open) {
+      menu.classList.toggle('is-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      /* 读屏用户听到的是「展开菜单 / 收起菜单」，与视觉状态一致 */
+      btn.setAttribute('aria-label', open ? '收起菜单' : '打开菜单');
+    }
+    /* 初始态：菜单默认收起 */
+    if (!btn.hasAttribute('aria-expanded')) btn.setAttribute('aria-expanded', 'false');
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(!menu.classList.contains('is-open'));
+    });
+
+    /* 点菜单里的链接 → 立即收起（页面正在跳转，先给出视觉反馈） */
+    menu.addEventListener('click', function (e) {
+      if (e.target.closest('a')) setOpen(false);
+    });
+
+    /* 点菜单与按钮之外的区域 → 收起 */
+    document.addEventListener('click', function (e) {
+      if (!menu.classList.contains('is-open')) return;
+      if (menu.contains(e.target) || btn.contains(e.target)) return;
+      setOpen(false);
+    });
+
+    /* Esc → 收起并把焦点还给按钮（键盘 / 读屏用户出口） */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (!menu.classList.contains('is-open')) return;
+      setOpen(false);
+      btn.focus();
     });
   }
 
