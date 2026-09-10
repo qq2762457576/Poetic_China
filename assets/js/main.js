@@ -319,6 +319,13 @@
     document.head.appendChild(s);
   }
 
+  /* ⚠️ 懒加载数据分片的缓存键，必须与 index-meta.js 同批更新。
+   * 原先三处各写各的（poems-text/index/quizpool 各一个日期），
+   * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
+   * 表现为「文件里明明有这首诗，网站却搜不到」。
+   * 数据一重建就改这一个常量。 */
+  var DATA_V = '20260911a';
+
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
   var TextStore = (function () {
@@ -328,7 +335,7 @@
       if (cache[no]) return cb(cache[no]);
       if (pending[no]) { pending[no].push(cb); return; }
       pending[no] = [cb];
-      loadScript('assets/data/poems-text/p' + no + '.js?v=20260909a', function () {
+      loadScript('assets/data/poems-text/p' + no + '.js?v=' + DATA_V, function () {
         cache[no] = window['POEM_TEXT_' + no] || [];
         var cbs = pending[no];
         delete pending[no];
@@ -356,7 +363,7 @@
       if (POEMS[no * IDX_META.per] !== undefined) return cb(true);
       if (loading[no]) { loading[no].push(cb); return; }
       loading[no] = [cb];
-      loadScript('assets/data/poems-index/p' + no + '.js?v=20260909b', function (ok) {
+      loadScript('assets/data/poems-index/p' + no + '.js?v=' + DATA_V, function (ok) {
         if (ok) {
           var arr = window['POEM_INDEX_' + no] || [];
           var off = no * IDX_META.per;
@@ -1058,13 +1065,29 @@
     if (!pageItems.length) {
       /* 元数据无结果且尚未做正文搜索 → 提供全文搜索入口 */
       if (state.keyword && !state.textHits && !state.scanning) {
+        /* ⚠️ 索引仍在后台补齐时，不能说「没有」—— 没搜到的可能只是
+         * 还没载入的分片。如实告知进度，并给「等补齐」的按钮。 */
+        var total = IDX_META.total || 0;
+        var loaded = IndexStore.loadedCount();
+        var stillLoading = loaded < total;
+        var head = stillLoading
+          ? '已载入的 ' + loaded.toLocaleString('en-US') + ' / ' + total.toLocaleString('en-US') +
+            ' 首里没有「' + esc(state.keyword) + '」，其余分片还在载入'
+          : '标题 / 作者 / 首行中没有「' + esc(state.keyword) + '」';
         wrap.innerHTML =
-          '<div class="empty-state">标题 / 作者 / 首行中没有「' + esc(state.keyword) + '」' +
+          '<div class="empty-state">' + head +
           '<br /><button class="btn btn--ghost" id="fulltext-scan-btn" style="margin-top:14px;">在全部 ' +
-          (IDX_META.total || 0).toLocaleString('en-US') + ' 首的正文里搜（会分批下载正文数据）</button></div>';
+          total.toLocaleString('en-US') + ' 首的正文里搜（会分批下载正文数据）</button></div>';
         var scanBtn = document.getElementById('fulltext-scan-btn');
         if (scanBtn) {
           scanBtn.addEventListener('click', function () { scanFullText(state.keyword); });
+        }
+        /* 分片补齐后自动重搜，用户不必手动再输入一次 */
+        if (stillLoading) {
+          var kwNow = state.keyword;
+          IndexStore.ensureAll(null, function () {
+            if (state.keyword === kwNow) { state.page = 1; renderPoems(); }
+          });
         }
       } else {
         wrap.innerHTML = '<div class="empty-state">没有找到匹配的作品，换个词试试</div>';
@@ -1197,7 +1220,11 @@
       renderPoems();
       updateLibraryProgress();
     };
-    IndexStore.ensureAll(function () { window.__refreshLibrary(); });
+    /* ⚠️ ensureAll 是两参数签名 (onProgress, done)：前者每片调一次、
+     * 后者全部完成才调。这里两个都要传 —— 只传第一个的话，
+     * 末片到位后没有保证性的收尾重渲染（曾被误写成单参数）。 */
+    IndexStore.ensureAll(function () { window.__refreshLibrary(); },
+      function () { window.__refreshLibrary(); });
 
     var input = document.getElementById('library-search');
     if (input) {
@@ -3123,7 +3150,7 @@
     stemEl.textContent = '题库加载中…';
     var info = window.QUIZ_POOL_INFO || { chunks: 4 };
     var no = Math.floor(Math.random() * info.chunks);
-    loadScript('assets/data/quizpool/p' + no + '.js?v=20260909a', function (ok) {
+    loadScript('assets/data/quizpool/p' + no + '.js?v=' + DATA_V, function (ok) {
       if (!ok) {
         stemEl.textContent = '题库加载失败，请刷新重试';
         return;
