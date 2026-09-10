@@ -107,19 +107,25 @@ window.SHICI_CONFIG = {
 只跑第 4 段（点赞函数）也可以，不改表结构：
 
 ```sql
-create or replace function public.increment_likes(p_post_id uuid)
+-- 必须先 drop：Postgres 不允许 CREATE OR REPLACE 修改已有函数的参数名
+drop function if exists public.increment_likes(uuid);
+
+create function public.increment_likes(post_id uuid)
 returns void
 language sql
 security definer
 set search_path = public
 as $$
-  update public.posts set likes = likes + 1 where id = p_post_id;
+  update public.posts set likes = likes + 1 where id = post_id;
 $$;
 
 grant execute on function public.increment_likes(uuid) to anon, authenticated;
 ```
 
-> 不跑也行：前端已做兼容，旧参数名 `post_id` 的库同样能点赞。但旧版函数没有 `security definer`，游客点赞可能被安全策略拦下。
+> 不跑也行：前端已做兼容，旧库同样能点赞。但旧版函数没有 `security definer`，游客点赞可能被安全策略拦下。
+
+**已知报错：`cannot change name of input parameter "post_id"`**
+这是因为早期版本的函数参数名与你现在的脚本不一致，而 Postgres 禁止 `CREATE OR REPLACE` 改参数名。**先 `drop` 再 `create`** 即可（上面的写法已经包含了 drop）。
 
 ---
 

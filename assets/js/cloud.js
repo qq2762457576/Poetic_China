@@ -166,11 +166,10 @@
       like: function (id, cb) {
         ensure(function (c) {
           if (!c) return cb(false);
-          /* 兼容两种函数签名：新库 p_post_id，早期库 post_id。
-             已经建过旧版库的站点不用重跑 SQL 也能点赞。 */
-          c.rpc('increment_likes', { p_post_id: id }).then(function (r) {
+          /* 参数名统一为 post_id；为防个别库残留 p_post_id 版本，失败后再试一次 */
+          c.rpc('increment_likes', { post_id: id }).then(function (r) {
             if (!r.error) return cb(true);
-            c.rpc('increment_likes', { post_id: id }).then(function (r2) {
+            c.rpc('increment_likes', { p_post_id: id }).then(function (r2) {
               cb(!r2.error);
             });
           });

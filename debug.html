@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="robots" content="noindex,nofollow" />
+<html lang="zh-CN" data-page-node-id="aGgNNNzwd49kH0JoNrl4LC">
+<head data-page-node-id="zBYvkul9tvXODfHBT8bwqA">
+<meta charset="UTF-8" data-page-node-id="olbH1J90HbHrwUVwsp6lDy" />
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="Np93l1YVclQkmxXiaWvLRO" />
+<meta name="robots" content="noindex,nofollow" data-page-node-id="eVBk7xspSEXg8e3Rnrl7rQ" />
 <title>云端连接自检 · 诗意中国</title>
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="assets/css/style.css?v=20260910a" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" data-page-node-id="S8g0NH2WPCIz1Va4UMwBTD" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260910a" data-page-node-id="ihlP7MQ0mRnIuN4G0nBhik" />
 <style>
   .dbg-wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
   .dbg-h { font-size: 26px; margin: 0 0 8px; }
@@ -41,47 +41,47 @@
               padding: 10px 14px; font-size: 13px; line-height: 1.7; margin-top: 12px; }
 </style>
 </head>
-<body>
-<div class="dbg-wrap">
-  <h1 class="dbg-h serif">云端连接自检</h1>
-  <p class="dbg-sub">
-    填好 URL 和密钥后点「开始自检」，会逐项测试连通性并给出具体错误。<br />
+<body data-page-node-id="DPgcm7Q5PtC7wLEAr4BjpF">
+<div class="dbg-wrap" data-page-node-id="fLFPlV0QMLsNhN6E375ecG">
+  <h1 class="dbg-h serif" data-page-node-id="5gvtZYTkICW9u36lMLRHXA">云端连接自检</h1>
+  <p class="dbg-sub" data-page-node-id="LXjP9t3wsRdLuAC7kd2LRF">
+    填好 URL 和密钥后点「开始自检」，会逐项测试连通性并给出具体错误。<br  data-page-node-id="Uneneea2PGbUY69PcY5qje"/>
     这个页面只在你本机运行，输入的内容不会上传、不会保存到仓库。
   </p>
 
-  <div class="dbg-card">
-    <h3>① 去哪里找这两个值</h3>
-    <div class="dbg-where">
-      <p><b>路径 A（推荐）</b>：左侧栏最底部点 <b>Project Settings</b>（齿轮图标）→ 上方标签选 <b>API</b> → 页面里找这两块：</p>
-      <ul>
-        <li><b>Project URL</b> —— 长这样 <code class="dbg-code">https://abcdefgh.supabase.co</code></li>
-        <li><b>Project API keys</b> → 复制 <b>anon / publishable</b> 那一条（旧版是一长串 <code class="dbg-code">eyJhbGciOi...</code>，新版是 <code class="dbg-code">sb_publishable_...</code>，两种都能用）</li>
+  <div class="dbg-card" data-page-node-id="G693RgsQrRETD1meRU7fFJ">
+    <h3 data-page-node-id="moloZWRJJp75gX4nNhxOaV">① 去哪里找这两个值</h3>
+    <div class="dbg-where" data-page-node-id="v45bFP3B7EFFP6Aslzqbob">
+      <p data-page-node-id="KJUi3MLXOy0P4MYJSYAUEh"><b data-page-node-id="r9BlS9Dkcm3ELZ9AK7tw45">路径 A（推荐）</b>：左侧栏最底部点 <b data-page-node-id="pPFnEhm6zOGm38oDFqvlHj">Project Settings</b>（齿轮图标）→ 上方标签选 <b data-page-node-id="hj2YZscsZKlTBMvkK4opF2">API</b> → 页面里找这两块：</p>
+      <ul data-page-node-id="2asv7Pj7IRD6G2NriFxUzD">
+        <li data-page-node-id="GL6Hh8ynNZshN01EYGJV6K"><b data-page-node-id="RxbY9wC9ly6zG3YS6FlYT9">Project URL</b> —— 长这样 <code class="dbg-code" data-page-node-id="rDCEVBLS29MHMW404oiKFT">https://abcdefgh.supabase.co</code></li>
+        <li data-page-node-id="0UzhJc66dgiBGGmzsz8qO2"><b data-page-node-id="FdlOlFuYunU3oyOAVgEMDJ">Project API keys</b> → 复制 <b data-page-node-id="FEmjt7hEtX70BJUCpajKiI">anon / publishable</b> 那一条（旧版是一长串 <code class="dbg-code" data-page-node-id="pemX4cqbj94lafwAr7Fojx">eyJhbGciOi...</code>，新版是 <code class="dbg-code" data-page-node-id="2Ejr86lkMQ7TocNXYsBVMl">sb_publishable_...</code>，两种都能用）</li>
       </ul>
-      <p style="margin-top:14px;"><b>路径 B</b>：页面右上角有个绿色 <b>Connect</b> 按钮 → 点开选 <b>App frameworks</b> 标签 → 直接显示 <code class="dbg-code">SUPABASE_URL</code> 和 <code class="dbg-code">SUPABASE_ANON_KEY</code>，复制即可。</p>
-      <div class="dbg-warn">
-        ⚠️ 千万不要复制 <b>service_role</b> / <b>secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b>anon / publishable</b>。
+      <p style="margin-top:14px;" data-page-node-id="CnK1GKrwaBMlbsFuoBcBur"><b data-page-node-id="hlbdPaoo4gCRkNDwbG56lM">路径 B</b>：页面右上角有个绿色 <b data-page-node-id="de00M2vwHSqYHEIZWlQAjl">Connect</b> 按钮 → 点开选 <b data-page-node-id="hfiC2G6dqwbkSP5RpxUVNo">App frameworks</b> 标签 → 直接显示 <code class="dbg-code" data-page-node-id="xivtDphd3ZsUh2QP82wyrO">SUPABASE_URL</code> 和 <code class="dbg-code" data-page-node-id="dVMIOGEYhhZkjKROR6P74m">SUPABASE_ANON_KEY</code>，复制即可。</p>
+      <div class="dbg-warn" data-page-node-id="bHXca3w1UWvGYRB37yfqkE">
+        ⚠️ 千万不要复制 <b data-page-node-id="sEfHSD17nwjYYGwqG5qs6K">service_role</b> / <b data-page-node-id="1IJHGr1xIrMgx1xk5mJR4K">secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b data-page-node-id="Ckvb6VuRLHOcbX27cN4EE2">anon / publishable</b>。
       </div>
     </div>
   </div>
 
-  <div class="dbg-card">
-    <h3>② 填进来测一测</h3>
-    <div class="dbg-field">
-      <label>Project URL</label>
-      <input id="dbg-url" placeholder="https://abcdefgh.supabase.co" />
-      <span class="dbg-hint">末尾的斜杠会自动去掉，带不带都行</span>
+  <div class="dbg-card" data-page-node-id="oDXjl6JNIi8HBKIkgz65lz">
+    <h3 data-page-node-id="Mblkv3MkB3KYFWxionZQJP">② 填进来测一测</h3>
+    <div class="dbg-field" data-page-node-id="8RqHh81HGvWBuoZUhUIeVH">
+      <label data-page-node-id="zHxoZgDsOOCI1YJQwwf8HU">Project URL</label>
+      <input id="dbg-url" placeholder="https://abcdefgh.supabase.co" data-page-node-id="ParQWVlrelcvT4NZZpZsq1" />
+      <span class="dbg-hint" data-page-node-id="aDcEITItgAK7Dc6yBNHVP9">末尾的斜杠会自动去掉，带不带都行</span>
     </div>
-    <div class="dbg-field">
-      <label>anon / publishable key</label>
-      <input id="dbg-key" placeholder="eyJhbGciOi... 或 sb_publishable_..." />
+    <div class="dbg-field" data-page-node-id="cfYU8zGUj7qRG4W7bVVvV6">
+      <label data-page-node-id="ZcLVHihRXSeyzy55izqV5K">anon / publishable key</label>
+      <input id="dbg-key" placeholder="eyJhbGciOi... 或 sb_publishable_..." data-page-node-id="uXfBt8iZP1O3bStqkCx94W" />
     </div>
-    <button class="dbg-btn" id="dbg-run">开始自检</button>
-    <span class="dbg-hint" style="margin-left:12px;" id="dbg-src"></span>
+    <button class="dbg-btn" id="dbg-run" data-page-node-id="MBufhIQvbLB8zJjguGK8He">开始自检</button>
+    <span class="dbg-hint" style="margin-left:12px;" id="dbg-src" data-page-node-id="eecTdQcIEiSCumYRzhdgCJ"></span>
   </div>
 
-  <div class="dbg-card dbg-steps" id="dbg-out">
-    <h3>③ 自检结果</h3>
-    <div class="dbg-step"><span class="dbg-ico dbg-run">·</span><div>等待开始<div class="dbg-msg">填好上面两项后点按钮</div></div></div>
+  <div class="dbg-card dbg-steps" id="dbg-out" data-page-node-id="qEqPKwLVhuekEvVygOTy6q">
+    <h3 data-page-node-id="PzLJwY4SlpHHDHpo2MPlLZ">③ 自检结果</h3>
+    <div class="dbg-step" data-page-node-id="SZTjw3A4Pk0ClGBvm3EzEm"><span class="dbg-ico dbg-run" data-page-node-id="QSO6z1NYPtpDXSZok6rnp2">·</span><div data-page-node-id="BFh6TXengdeskpSe7fJVw5">等待开始<div class="dbg-msg" data-page-node-id="T5f7kFIoURPpYKUOMLOaFj">填好上面两项后点按钮</div></div></div>
   </div>
 </div>
 
@@ -140,6 +140,7 @@
 
   function test(url, key) {
     var c = window.supabase.createClient(url, key);
+    var NIL = '00000000-0000-0000-0000-000000000000'; /* 不存在的 id，用于探测函数是否可调 */
 
     /* 4. 建表检查 */
     c.from('posts').select('id,title,author,status,likes,created_at,poem_id,kind,body,user_id').limit(1)
@@ -162,18 +163,26 @@
         if (r === null) return null;
         if (r && r.error) { step('no', 'comments 表有问题', r.error.message); return null; }
         step('ok', 'comments 表可读');
-        return c.rpc('increment_likes', { p_post_id: '00000000-0000-0000-0000-000000000000' });
+        return c.rpc('increment_likes', { post_id: NIL });
       })
       .then(function (r) {
-        if (r === null) return;
-        /* 传一个不存在的 id，只要「函数存在且能调用」就算通过（影响 0 行） */
-        if (r && r.error && /function|does not exist/i.test(r.error.message)) {
-          step('no', '点赞函数 increment_likes 不存在', '请执行 schema.sql 第 4 段（函数）');
-        } else {
-          step('ok', '点赞函数可用');
+        if (r === null) return null;
+        if (r && r.error && /function|does not exist|schema cache/i.test(r.error.message)) {
+          /* 可能是旧版参数名，再试一次 */
+          return c.rpc('increment_likes', { p_post_id: NIL }).then(function (r2) {
+            if (r2 && r2.error) {
+              step('no', '点赞函数 increment_likes 不可用', r2.error.message + ' — 请执行 schema.sql 第 4 段');
+            } else {
+              step('ok', '点赞函数可用（旧参数名）');
+            }
+            return 'done';
+          });
         }
-        finish(url, key);
-      });
+        if (r && r.error) { step('no', '点赞函数调用失败', r.error.message); return 'done'; }
+        step('ok', '点赞函数可用');
+        return 'done';
+      })
+      .then(function (x) { if (x === 'done') finish(url, key); });
   }
 
   function finish(url, key) {

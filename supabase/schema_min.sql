@@ -42,13 +42,16 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update       on public.posts    to anon, authenticated;
 grant select, insert, delete       on public.comments to anon, authenticated;
 
-create or replace function public.increment_likes(p_post_id uuid)
+-- 先 drop 再 create：Postgres 禁止 CREATE OR REPLACE 修改已有函数的参数名
+drop function if exists public.increment_likes(uuid);
+
+create function public.increment_likes(post_id uuid)
 returns void
 language sql
 security definer
 set search_path = public
 as $$
-  update public.posts set likes = likes + 1 where id = p_post_id;
+  update public.posts set likes = likes + 1 where id = post_id;
 $$;
 
 grant execute on function public.increment_likes(uuid) to anon, authenticated;
