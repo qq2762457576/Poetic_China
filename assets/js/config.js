@@ -16,5 +16,5 @@
 window.SHICI_CONFIG = {
   // Project URL = Data API 地址去掉末尾的 /rest/v1/
   supabaseUrl: 'https://ocdomwjlipcwzfvzbowy.supabase.co',
-  supabaseAnonKey: ''   // ← 待填：anon / publishable 密钥
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jZG9td2psaXBjd3pmdnpib3d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5OTQzNzEsImV4cCI6MjEwNDU3MDM3MX0.uedhjsz8FB_imcrnkLVzU6GA9iHPGLnZydjPtc29jjg'   // ← 待填：anon / publishable 密钥
 };
