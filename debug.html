@@ -52,12 +52,21 @@
   <div class="dbg-card" data-page-node-id="G693RgsQrRETD1meRU7fFJ">
     <h3 data-page-node-id="moloZWRJJp75gX4nNhxOaV">① 去哪里找这两个值</h3>
     <div class="dbg-where" data-page-node-id="v45bFP3B7EFFP6Aslzqbob">
-      <p data-page-node-id="KJUi3MLXOy0P4MYJSYAUEh"><b data-page-node-id="r9BlS9Dkcm3ELZ9AK7tw45">路径 A（推荐）</b>：左侧栏最底部点 <b data-page-node-id="pPFnEhm6zOGm38oDFqvlHj">Project Settings</b>（齿轮图标）→ 上方标签选 <b data-page-node-id="hj2YZscsZKlTBMvkK4opF2">API</b> → 页面里找这两块：</p>
-      <ul data-page-node-id="2asv7Pj7IRD6G2NriFxUzD">
-        <li data-page-node-id="GL6Hh8ynNZshN01EYGJV6K"><b data-page-node-id="RxbY9wC9ly6zG3YS6FlYT9">Project URL</b> —— 长这样 <code class="dbg-code" data-page-node-id="rDCEVBLS29MHMW404oiKFT">https://abcdefgh.supabase.co</code></li>
-        <li data-page-node-id="0UzhJc66dgiBGGmzsz8qO2"><b data-page-node-id="FdlOlFuYunU3oyOAVgEMDJ">Project API keys</b> → 复制 <b data-page-node-id="FEmjt7hEtX70BJUCpajKiI">anon / publishable</b> 那一条（旧版是一长串 <code class="dbg-code" data-page-node-id="pemX4cqbj94lafwAr7Fojx">eyJhbGciOi...</code>，新版是 <code class="dbg-code" data-page-node-id="2Ejr86lkMQ7TocNXYsBVMl">sb_publishable_...</code>，两种都能用）</li>
+      <p data-page-node-id="KJUi3MLXOy0P4MYJSYAUEh"><b>Project URL</b> —— 你已经找到了，形如 <code class="dbg-code">https://abcdefgh.supabase.co</code>。<br />
+      新版界面里它在 <b>Project Settings → Data API</b>（旧版这个菜单叫 API，Supabase 改名了，所以按老教程找不到）。</p>
+
+      <p style="margin-top:16px;"><b>密钥在哪 —— 三个地方找，总有一个能看见：</b></p>
+      <ol style="padding-left:20px; line-height:1.9;">
+        <li>同一个 <b>Data API</b> 页面，<b>往下滚动</b>，找 <b>Project API keys</b> 区域</li>
+        <li>左侧 <b>Project Settings</b> 下有独立一项 <b>API Keys</b>（新版把密钥单独拆出来了）</li>
+        <li>页面右上角绿色 <b>Connect</b> 按钮 → <b>App frameworks</b> 标签 → 直接列出 <code class="dbg-code">SUPABASE_ANON_KEY</code></li>
+      </ol>
+      <p>密钥长这样，两种格式都能用：</p>
+      <ul>
+        <li>新版：<code class="dbg-code">sb_publishable_xxxxxxxxxxxx</code></li>
+        <li>旧版：<code class="dbg-code">eyJhbGciOi...</code>（一长串，通常 100 字符以上）</li>
       </ul>
-      <p style="margin-top:14px;" data-page-node-id="CnK1GKrwaBMlbsFuoBcBur"><b data-page-node-id="hlbdPaoo4gCRkNDwbG56lM">路径 B</b>：页面右上角有个绿色 <b data-page-node-id="de00M2vwHSqYHEIZWlQAjl">Connect</b> 按钮 → 点开选 <b data-page-node-id="hfiC2G6dqwbkSP5RpxUVNo">App frameworks</b> 标签 → 直接显示 <code class="dbg-code" data-page-node-id="xivtDphd3ZsUh2QP82wyrO">SUPABASE_URL</code> 和 <code class="dbg-code" data-page-node-id="dVMIOGEYhhZkjKROR6P74m">SUPABASE_ANON_KEY</code>，复制即可。</p>
+      <p style="margin-top:10px;">如果看到好几条，认准带 <b>anon</b> 或 <b>publishable</b> 字样的那一条。</p>
       <div class="dbg-warn" data-page-node-id="bHXca3w1UWvGYRB37yfqkE">
         ⚠️ 千万不要复制 <b data-page-node-id="sEfHSD17nwjYYGwqG5qs6K">service_role</b> / <b data-page-node-id="1IJHGr1xIrMgx1xk5mJR4K">secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b data-page-node-id="Ckvb6VuRLHOcbX27cN4EE2">anon / publishable</b>。
       </div>

@@ -59,13 +59,17 @@ Supabase 有两个执行按钮，**Run** 执行全部，**Run selected** 只执�
 
 **两条路径任选，都能拿到：**
 
-**路径 A** — 左侧栏最底部 **Project Settings**（齿轮）→ 上方标签 **API** → 页面里找：
-- **Project URL**：`https://abcdefgh.supabase.co`
-- **Project API keys** → 复制 **anon / publishable** 那一条
+> **界面改名提醒**：Supabase 新版把 **API** 菜单改成了 **Data API**，密钥则单独拆到 **API Keys**。按老教程找 "API" 会扑空。
 
-**路径 B** — 页面右上角绿色 **Connect** 按钮 → **App frameworks** 标签 → 直接列出 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY`
+**Project URL** — 左侧栏最底部 **Project Settings** → **Data API** → 页面顶部就是：
+`https://abcdefgh.supabase.co`
 
-密钥两种格式都正常：旧版是 `eyJhbGciOi...` 长串，新版是 `sb_publishable_...`。
+**密钥** — 三个位置找，总有一个能看见：
+1. 同一个 **Data API** 页面往下滚，找 **Project API keys** 区域
+2. 左侧 **Project Settings** 下独立一项 **API Keys**
+3. 页面右上角绿色 **Connect** 按钮 → **App frameworks** 标签 → 列出 `SUPABASE_ANON_KEY`
+
+密钥两种格式都正常：新版 `sb_publishable_...`，旧版 `eyJhbGciOi...`（100 字符以上）。认准带 **anon** 或 **publishable** 字样的那条。
 
 > 找不到时：**打开本项目根目录的 `debug.html`**，里面有截图级的位置说明，还能把值粘进去一键自检连通性，比肉眼找快。
 

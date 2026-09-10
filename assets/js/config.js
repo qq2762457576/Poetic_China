@@ -14,6 +14,7 @@
  *       service_role 密钥填到这里，那个必须只在服务器上用。
  * ============================================================ */
 window.SHICI_CONFIG = {
-  supabaseUrl: '',      // 例：https://abcdefghijklmnop.supabase.co
-  supabaseAnonKey: ''   // 例：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  // Project URL = Data API 地址去掉末尾的 /rest/v1/
+  supabaseUrl: 'https://ocdomwjlipcwzfvzbowy.supabase.co',
+  supabaseAnonKey: ''   // ← 待填：anon / publishable 密钥
 };
