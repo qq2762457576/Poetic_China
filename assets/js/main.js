@@ -24,7 +24,11 @@
     try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* 隐私模式下静默失败 */ }
   }
 
-  /* 学习进度 / 收藏（存诗词 id 数组） */
+  /* 学习进度 / 收藏（存诗词 id 数组）
+   * 存储策略（A 方案）：
+   *   · 未登录：只写 localStorage，随开随用，不强制注册
+   *   · 已登录：写 localStorage 的同时同步到 Supabase，换设备登录即恢复
+   *   读取永远先看本地（快、离线可用），登录后由 syncFromCloud() 补齐云端数据并合并 */
   var learnedIds = store('shici_learned', []);
   var favIds = store('shici_favs', []);
   function isLearned(id) { return learnedIds.indexOf(id) !== -1; }
@@ -33,6 +37,67 @@
     var i = list.indexOf(id);
     if (i === -1) list.push(id); else list.splice(i, 1);
     return list;
+  }
+
+  /* 是否处于云端模式（未登录也算云端模式，只是不推送） */
+  function cloudMode() {
+    return !!(window.Cloud && window.Cloud.mode && window.Cloud.mode() === 'cloud');
+  }
+  function loggedIn() {
+    return !!(window.Cloud && window.Cloud.auth && window.Cloud.auth.userId());
+  }
+
+  /* 登录后：拉云端数据，与本地合并（取并集），并把本地独有的推上去
+   * 这样「先本地用了一阵、后来才登录」的用户，进度不会丢 */
+  function syncUserData() {
+    if (!loggedIn()) return;
+
+    window.Cloud.learned.list(function (cloudIds) {
+      if (cloudIds) {
+        var before = learnedIds.length;
+        cloudIds.forEach(function (id) {
+          if (id != null && learnedIds.indexOf(id) === -1) learnedIds.push(id);
+        });
+        /* 本地有、云端没有的 → 推上去 */
+        var toPush = learnedIds.filter(function (id) { return cloudIds.indexOf(id) === -1; });
+        if (toPush.length) window.Cloud.learned.merge(toPush);
+        if (learnedIds.length !== before) {
+          saveStore('shici_learned', learnedIds);
+          if (window.__refreshLibrary) window.__refreshLibrary();
+        }
+      }
+    });
+
+    window.Cloud.favs.list(function (cloudIds) {
+      if (cloudIds) {
+        var before = favIds.length;
+        cloudIds.forEach(function (id) {
+          if (id != null && favIds.indexOf(id) === -1) favIds.push(id);
+        });
+        var toPush = favIds.filter(function (id) { return cloudIds.indexOf(id) === -1; });
+        if (toPush.length) window.Cloud.favs.merge(toPush);
+        if (favIds.length !== before) {
+          saveStore('shici_favs', favIds);
+          if (window.__refreshLibrary) window.__refreshLibrary();
+        }
+      }
+    });
+
+    /* 成绩：云端更高时用云端的 */
+    window.Cloud.scores.get(function (cs) {
+      if (!cs) return;
+      var local = loadChallengeStats();
+      var merged = {
+        bestScore: Math.max(local.bestScore || 0, cs.bestScore || 0),
+        bestStreak: Math.max(local.bestStreak || 0, cs.bestStreak || 0),
+        done: Math.max(local.done || 0, cs.done || 0),
+        correct: Math.max(local.correct || 0, cs.correct || 0)
+      };
+      if (merged.bestScore !== (local.bestScore || 0)) {
+        saveChallengeStats(merged);
+        if (typeof window.__refreshChallenge === 'function') window.__refreshChallenge();
+      }
+    });
   }
 
   /* ---------- 账号体系 ----------
@@ -83,6 +148,8 @@
         if (window.Cloud && window.Cloud.ready) {
           return window.Cloud.auth.signUp(account, pwd, name, function (err, r) {
             if (err) return cb(err);
+            /* 注册即登录（未开启邮箱验证时）→ 合并本地已有数据 */
+            if (!(r && r.needConfirm)) setTimeout(syncUserData, 0);
             if (r && r.needConfirm) return cb(null, '注册成功！请到邮箱点一下确认链接，回来就能登录');
             cb(null, '注册成功，已自动登录');
           });
@@ -100,6 +167,8 @@
       login: function (account, pwd, cb) {
         if (window.Cloud && window.Cloud.ready) {
           return window.Cloud.auth.signIn(account, pwd, function (err) {
+            /* 登录成功 → 立即合并本地与云端数据（不等 onChange，避免时序问题） */
+            if (!err) setTimeout(syncUserData, 0);
             cb(err);
           });
         }
@@ -481,20 +550,19 @@
       b.el.innerHTML = picks.map(function (p) { return miniCard(p, p.form); }).join('');
     });
 
-    /* 数据条：真实统计（featured.js 附带，免加载全库） */
+    /* 数据条：统一从 SITE_STATS 取真实统计（PRD 第十条：禁止硬编码）
+     * 兜底链：SITE_STATS → FEATURED_STATS → 索引元信息 */
+    var SS = window.SITE_STATS || {};
     var fstats = window.FEATURED_STATS || { poems: IDX_META.total || 0, authors: 0 };
     var statPoems = document.getElementById('stat-poems');
     var statAuthors = document.getElementById('stat-authors');
-    if (statPoems) statPoems.textContent = (fstats.poems || 0).toLocaleString('en-US');
-    if (statAuthors) {
-      var authors = fstats.authors;
-      if (!authors) {
-        var set = {};
-        loadedPoems().forEach(function (p) { set[p.author] = 1; });
-        authors = Object.keys(set).length;
-      }
-      statAuthors.textContent = authors.toLocaleString('en-US');
-    }
+    var statDynasties = document.getElementById('stat-dynasties');
+    var statGenres = document.getElementById('stat-genres');
+    var fmt = function (n) { return (n || 0).toLocaleString('en-US'); };
+    if (statPoems) statPoems.textContent = fmt(SS.poems || fstats.poems);
+    if (statAuthors) statAuthors.textContent = fmt(SS.authors || fstats.authors);
+    if (statDynasties) statDynasties.textContent = String(SS.dynasties || '');
+    if (statGenres) statGenres.textContent = String(SS.genres || '');
 
     /* 入场动画：滚动到可视区再播 */
     var animated = document.querySelectorAll('.anim-rise');
@@ -743,6 +811,19 @@
   function initLibrary() {
     if (!document.getElementById('poem-list')) return;
 
+    /* 统计行：统一从 SITE_STATS 取真实数字（PRD 第十条） */
+    var statLine = document.getElementById('library-stat-line');
+    if (statLine) {
+      var SS = window.SITE_STATS || {};
+      var poems = SS.poems || (window.POEM_INDEX_META && window.POEM_INDEX_META.total) || 0;
+      if (poems) {
+        statLine.textContent = poems.toLocaleString('en-US') + ' 首 · ' +
+          (SS.authors || 0).toLocaleString('en-US') + ' 位诗人';
+      } else {
+        statLine.textContent = '历代诗词总集';
+      }
+    }
+
     renderPoems();
     updateLibraryProgress();
 
@@ -797,12 +878,8 @@
   }
 
   /* ---------- 6. 社区广场：分享 + 审核 ---------- */
-  /* 帖子: {id, kind:'classic'|'original', title, text, poemId, author, ts, status, likes} */
-  var SEED_POSTS = [
-    { id: 's1', kind: 'original', title: '夜读杂兴', text: '灯下翻书夜半时，一窗凉月照吟髭。\n千年诗句如相待，读到情深总是痴。', author: '沈砚秋', ts: 1725500000000, status: 'approved', likes: 42 },
-    { id: 's2', kind: 'classic', title: '念奴娇·昆仑', text: '', poemId: null, author: '白也', ts: 1725580000000, status: 'approved', likes: 38 },
-    { id: 's3', kind: 'original', title: '秋日过锦官城', text: '锦江水暖雁初还，万里桥西夕照闲。\n不是少陵留此地，草堂谁与话巴山。', author: '顾清商', ts: 1725660000000, status: 'approved', likes: 27 }
-  ];
+  /* 帖子: {id, kind:'classic'|'original', title, text, poemId, author, ts, status, likes}
+   * 说明：不设任何种子/示例帖子 —— 社区内容全部来自真实用户（PRD 第四十条） */
 
   function getPosts() { return store('shici_posts', []); }
   function setPosts(posts) { saveStore('shici_posts', posts); }
@@ -841,17 +918,16 @@
     };
   }
 
-  /* 合并信息流：云端（人人可见）+ 本地种子/本机发布 */
+  /* 合并信息流：云端（人人可见）+ 本机发布 */
   function loadFeed(cb) {
     var local = getPosts().filter(function (p) {
       return p.status === 'approved' || p.author === CURRENT_USER;
     });
-    var seeds = SEED_POSTS;
     if (window.Cloud && window.Cloud.ready) {
       window.Cloud.posts.list(function (rows) {
         var cloud = (rows || []).map(normalizeCloudPost);
         var seen = {};
-        var all = cloud.concat(local, seeds).filter(function (p) {
+        var all = cloud.concat(local).filter(function (p) {
           if (!p || seen[p.id]) return false;
           seen[p.id] = 1;
           return true;
@@ -860,7 +936,7 @@
       });
     } else {
       var seen2 = {};
-      var all2 = local.concat(seeds).filter(function (p) {
+      var all2 = local.filter(function (p) {
         if (!p || seen2[p.id]) return false;
         seen2[p.id] = 1;
         return true;
@@ -1010,10 +1086,22 @@
     /* 云端模式：所有访客（含未登录）都能看到全站已通过的分享 */
     loadFeed(function (all) {
       list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
-        '<div class="empty-state">还没有作品，来写第一首吧</div>';
+        '<div class="empty-state">' +
+        '<p style="margin:0 0 14px;">这里还很安静。分享第一首诗，或把喜欢的经典推荐给同好。</p>' +
+        '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
+        '</div>';
       list.querySelectorAll('[data-like]').forEach(bindLike);
       bindCommentToggles(list);
       fillClassicBodies(list);
+      var composeBtn = list.querySelector('[data-open-compose]');
+      if (composeBtn) composeBtn.addEventListener('click', function () {
+        var trigger = document.querySelector('[data-compose-open]');
+        if (trigger) trigger.click();
+        else {
+          var card = document.getElementById('compose');
+          if (card) { card.hidden = false; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }
+      });
     });
   }
 
@@ -1377,6 +1465,8 @@
         if (!isLearned(poem.id)) {
           learnedIds.push(poem.id);
           saveStore('shici_learned', learnedIds);
+          /* 已登录则同步上云，失败不影响本地记录 */
+          if (loggedIn()) window.Cloud.learned.add(poem.id);
         }
         syncCheckin();
       });
@@ -1392,6 +1482,11 @@
       favBtn.addEventListener('click', function () {
         toggleIn(favIds, poem.id);
         saveStore('shici_favs', favIds);
+        /* 已登录则同步上云 */
+        if (loggedIn()) {
+          if (isFav(poem.id)) window.Cloud.favs.add(poem.id);
+          else window.Cloud.favs.remove(poem.id);
+        }
         syncFav();
       });
       syncFav();
@@ -1629,8 +1724,17 @@
       return { best: 0, total: 0, correct: 0, done: {}, bestScore: 0 };
     }
   }
+  /* 保存成绩：本地立即写；已登录时同时上报云端（由数据库取最大值） */
   function saveChallengeStats(s) {
     try { localStorage.setItem('shiyun-challenge', JSON.stringify(s)); } catch (e) {}
+    if (loggedIn()) {
+      window.Cloud.scores.save({
+        bestScore: s.bestScore || 0,
+        bestStreak: s.best || 0,
+        done: (typeof s.total === 'number' ? s.total : 0),
+        correct: s.correct || 0
+      });
+    }
   }
 
   function initChallenge() {
@@ -1680,42 +1784,24 @@
     var progressFill = document.getElementById('daily-progress-fill');
     var levelList = document.getElementById('level-list');
 
-    /* --- 闯关高分榜：自己的成绩驱动排名，即时刷新；诗友分数为本地模拟动态 ---
-     * （纯静态站没有服务器，真实的多人实时榜需要后端支持，见页面说明） */
+    /* --- 我的最好成绩 ---
+     * 纯静态站没有服务器，无法聚合全站用户的真实分数。
+     * 因此这里只展示「我」的真实成绩，不编造任何虚拟对手（PRD 第四十条）。 */
     var rankListEl = document.getElementById('rank-list');
     var rankUpdatedEl = document.getElementById('rank-updated');
-    var RIVALS = [
-      { name: '沈砚秋', score: 90 }, { name: '陆栖迟', score: 80 },
-      { name: '白也', score: 70 }, { name: '顾清商', score: 60 },
-      { name: '江晚吟', score: 50 }
-    ];
-    var CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八'];
     function renderRank() {
       if (!rankListEl) return;
-      var rows = RIVALS.map(function (r) { return { name: r.name, score: r.score, me: false }; });
-      rows.push({ name: CURRENT_USER || '我', score: stats.bestScore || 0, me: true });
-      rows.sort(function (a, b) { return b.score - a.score; });
-      rankListEl.innerHTML = rows.map(function (r, i) {
-        return (
-          '<div class="rank-row' + (r.me ? ' rank-row--me' : '') + '">' +
-          '<span>' + (CN_NUM[i] || (i + 1)) + '　' + esc(r.name) + (r.me ? '（我）' : '') + '</span>' +
-          '<span>' + r.score + ' 分</span></div>'
-        );
-      }).join('');
+      var myScore = stats.bestScore || 0;
+      rankListEl.innerHTML =
+        '<div class="rank-row rank-row--me">' +
+        '<span>' + esc(CURRENT_USER || '我') + '（我）</span>' +
+        '<span>' + myScore + ' 分</span></div>';
       if (rankUpdatedEl) {
-        var d = new Date();
-        rankUpdatedEl.textContent = '更新于 ' + ('0' + d.getHours()).slice(-2) + ':' +
-          ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+        rankUpdatedEl.textContent = myScore > 0
+          ? '历史最高分 · 记录在本机'
+          : '还没有成绩，开始闯关吧';
       }
     }
-    /* 诗友动态：每 20 秒随机一位小幅涨分，榜单自动重排 */
-    setInterval(function () {
-      var r = pickOne(RIVALS);
-      if (r && r.score < 100 && Math.random() < 0.6) {
-        r.score = Math.min(100, r.score + 10);
-        renderRank();
-      }
-    }, 20000);
     /* 跨标签页同步：别的标签页出了分，这里跟着变 */
     window.addEventListener('storage', function (e) {
       if (e.key !== 'shiyun-challenge') return;
@@ -1933,6 +2019,13 @@
     render();
     updateScore();
     renderRank();
+
+    /* 云端数据同步完成后刷新面板（由 syncUserData 调用） */
+    window.__refreshChallenge = function () {
+      stats = loadChallengeStats();
+      updateScore();
+      renderRank();
+    };
   }
 
 
@@ -1947,9 +2040,11 @@
 
     /* 云端会话恢复：SDK 就绪后若发现已登录会话，补画顶栏与信息流 */
     if (window.Cloud && window.Cloud.ready) {
-      window.Cloud.auth.onChange(function () {
+      window.Cloud.auth.onChange(function (user) {
         initAuthUI();
         renderFeed();
+        /* 已登录 → 合并本地与云端的学习进度/收藏/成绩 */
+        if (user) syncUserData();
       });
     }
 

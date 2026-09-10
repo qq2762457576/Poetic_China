@@ -215,6 +215,128 @@
           c.from('comments').delete().eq('id', id).then(function (r) { cb(!r.error); });
         });
       }
+    },
+
+    /* ---------- 学习进度 / 收藏 / 成绩（登录后走云端） ---------- */
+    /* 读：返回 id 数组；写：fire-and-forget，失败不影响本地体验 */
+    learned: {
+      list: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          var uid = Cloud.auth.userId();
+          if (!uid) return cb(null);
+          c.from('learned').select('poem_id').eq('user_id', uid)
+            .then(function (r) {
+              cb(r.error ? null : (r.data || []).map(function (x) { return x.poem_id; }));
+            });
+        });
+      },
+      add: function (poemId, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          /* upsert：重复标记同一首不报错（唯一约束 user_id+poem_id） */
+          c.from('learned').upsert(
+            { user_id: uid, poem_id: poemId },
+            { onConflict: 'user_id,poem_id', ignoreDuplicates: true }
+          ).then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      remove: function (poemId, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.from('learned').delete().eq('user_id', uid).eq('poem_id', poemId)
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      /* 批量合并：把本地进度一次性推上云（首次登录用） */
+      merge: function (poemIds, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid || !poemIds || !poemIds.length) return cb && cb(false);
+          var rows = poemIds.map(function (id) { return { user_id: uid, poem_id: id }; });
+          c.from('learned').upsert(rows,
+            { onConflict: 'user_id,poem_id', ignoreDuplicates: true }
+          ).then(function (r) { cb && cb(!r.error); });
+        });
+      }
+    },
+
+    favs: {
+      list: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          var uid = Cloud.auth.userId();
+          if (!uid) return cb(null);
+          c.from('favs').select('poem_id').eq('user_id', uid)
+            .then(function (r) {
+              cb(r.error ? null : (r.data || []).map(function (x) { return x.poem_id; }));
+            });
+        });
+      },
+      add: function (poemId, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.from('favs').upsert(
+            { user_id: uid, poem_id: poemId },
+            { onConflict: 'user_id,poem_id', ignoreDuplicates: true }
+          ).then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      remove: function (poemId, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.from('favs').delete().eq('user_id', uid).eq('poem_id', poemId)
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      merge: function (poemIds, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid || !poemIds || !poemIds.length) return cb && cb(false);
+          var rows = poemIds.map(function (id) { return { user_id: uid, poem_id: id }; });
+          c.from('favs').upsert(rows,
+            { onConflict: 'user_id,poem_id', ignoreDuplicates: true }
+          ).then(function (r) { cb && cb(!r.error); });
+        });
+      }
+    },
+
+    scores: {
+      get: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          var uid = Cloud.auth.userId();
+          if (!uid) return cb(null);
+          c.from('scores').select('*').eq('user_id', uid).maybeSingle()
+            .then(function (r) {
+              if (r.error) return cb(null);
+              if (!r.data) return cb(null);
+              cb({
+                bestScore: r.data.best_score || 0,
+                bestStreak: r.data.best_streak || 0,
+                done: r.data.total_done || 0,
+                correct: r.data.total_right || 0
+              });
+            });
+        });
+      },
+      /* 由数据库取最大值，不会覆盖更好的历史记录 */
+      save: function (s, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.rpc('upsert_score', {
+            p_score: s.bestScore || 0,
+            p_streak: s.bestStreak || 0,
+            p_done: s.done || 0,
+            p_right: s.correct || 0
+          }).then(function (r) { cb && cb(!r.error); });
+        });
+      }
     }
   };
 
