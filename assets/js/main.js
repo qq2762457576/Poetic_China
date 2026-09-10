@@ -461,8 +461,8 @@
           if (err) return hint(regForm, err);
           /* 邮箱需要点确认链接时，停在页面提示，不跳转 */
           if (msg && msg.indexOf('确认') !== -1) return hint(regForm, msg, true);
-          hint(regForm, msg || '注册成功，正在进入诗意中国…', true);
-          setTimeout(function () { location.href = 'index.html'; }, 700);
+          hint(regForm, msg || '注册成功，正在进入你的空间…', true);
+          setTimeout(function () { location.href = 'me.html'; }, 700);
         });
       });
     }
@@ -477,7 +477,7 @@
         Auth.login(account, pwd, function (err) {
           if (err) return hint(loginForm, err);
           hint(loginForm, '登录成功，欢迎回来…', true);
-          setTimeout(function () { location.href = 'index.html'; }, 700);
+          setTimeout(function () { location.href = 'me.html'; }, 700);
         });
       });
     }
@@ -500,8 +500,10 @@
           (window.Cloud && window.Cloud.ready
             ? '账号已同步云端，换设备登录同一邮箱即可继续'
             : '学习进度与闯关成绩会在本机自动保存') + '</p>' +
-          '<a class="btn btn--primary btn--block" href="index.html">回到首页</a>' +
-          '<p class="form-hint" style="margin-top:16px;"><a data-logout style="cursor:pointer;">退出登录</a></p>' +
+          '<a class="btn btn--primary btn--block" href="me.html">进入我的空间</a>' +
+          '<p class="form-hint" style="margin-top:16px;">' +
+          '<a href="index.html" style="margin-right:16px;">回到首页</a>' +
+          '<a data-logout style="cursor:pointer;">退出登录</a></p>' +
           '</div>';
       }
     }
@@ -517,6 +519,32 @@
   /* 顶栏登录态：登录后显示笔名 + 退出 */
   function initAuthUI() {
     var name = Auth.current();
+
+    /* 「我的」页的顶栏专用结构：两个容器按登录态互斥显隐 */
+    var accBox = document.getElementById('header-account');
+    var guestBox = document.getElementById('header-guest');
+    if (accBox || guestBox) {
+      if (name) {
+        if (accBox) {
+          accBox.hidden = false;
+          var hn = document.getElementById('header-account-name');
+          if (hn) hn.textContent = name;
+          var hs = document.getElementById('header-signout');
+          if (hs && !hs.__bound) {
+            hs.__bound = 1;
+            hs.addEventListener('click', function (e) {
+              e.preventDefault();
+              Auth.logout(function () { location.reload(); });
+            });
+          }
+        }
+        if (guestBox) guestBox.hidden = true;
+      } else {
+        if (accBox) accBox.hidden = true;
+        if (guestBox) guestBox.hidden = false;
+      }
+    }
+
     if (!name) return;
     document.querySelectorAll('.header-actions .only-desktop').forEach(function (box) {
       if (!box.querySelector('a[href="auth.html"]')) return;
@@ -529,6 +557,121 @@
       a.removeAttribute('href');
       a.setAttribute('data-logout', '');
     });
+  }
+
+  /* ---------- 「我的」个人中心 ----------
+   * 这一页只做「聚合呈现」：所有数据都来自既有存储（学习进度 / 收藏 / 成绩 / 错题 / 我的分享），
+   * 不新造任何统计口径，也不编造任何数字（PRD 第四十条）。
+   * 未登录同样可用 —— 本地存储的数据照样展示，只是提示「登录后不丢」。 */
+  function initMe() {
+    var subtitle = document.getElementById('me-subtitle');
+    if (!subtitle) return;   /* 不是「我的」页，直接退出 */
+
+    var name = CURRENT_USER || Auth.current() || null;
+    var guestCard = document.getElementById('me-guest-card');
+    var accountCard = document.getElementById('me-account-card');
+
+    /* --- 1. 账号区：登录 → 账号卡；未登录 → 提示卡 --- */
+    if (name) {
+      if (accountCard) accountCard.hidden = false;
+      if (guestCard) guestCard.hidden = true;
+      var nameEl = document.getElementById('me-name');
+      if (nameEl) nameEl.textContent = name;
+      var avEl = document.getElementById('me-avatar');
+      if (avEl) avEl.textContent = name[0] || '诗';
+      var accLine = document.getElementById('me-account-line');
+      if (accLine) {
+        var mail = myEmail();
+        accLine.textContent = mail ? mail : '本地账号（仅本机有效）';
+      }
+      subtitle.textContent = name + ' 的诗词学习空间';
+    } else {
+      if (guestCard) guestCard.hidden = false;
+      if (accountCard) accountCard.hidden = true;
+      subtitle.textContent = '你的诗词学习空间';
+    }
+
+    /* --- 2. 四个数字卡 --- */
+    var learned = learnedIds.length;
+    var favs = favIds.length;
+    var st = loadChallengeStats();
+    var wrong = loadWrongBook().length;
+
+    setNum('me-stat-learned', learned);
+    setNum('me-stat-favs', favs);
+    setNum('me-stat-score', st.bestScore || 0);
+    setNum('me-stat-wrong', wrong);
+
+    /* 数字为 0 时给一句「怎么才会有」的提示，避免冷冰冰的 0 */
+    setHint('me-stat-learned-hint', learned
+      ? '已加入学习记录的篇目'
+      : '在课堂页点「打卡」会记在这里');
+    setHint('me-stat-favs-hint', favs
+      ? '收藏的篇目，随时回看'
+      : '收藏喜欢的篇目，随时回看');
+    setHint('me-stat-score-hint', st.bestScore
+      ? '挑战闯关的历史最高分'
+      : '还没有成绩，去闯一关');
+    setHint('me-stat-wrong-hint', wrong
+      ? '错题本里的题，等你复习'
+      : '答错的题会自动收进错题本');
+
+    /* --- 3. 右侧栏 --- */
+    setText('me-link-wrong', wrong + ' 题 →');
+    setText('me-side-score', String(st.bestScore || 0));
+    setText('me-side-streak', String(st.best || 0));
+    /* 正确率：只统计真正答过的题（total 为 0 时显示占位符，不能显示 100%） */
+    var answered = st.total || 0;
+    setText('me-side-accuracy', answered > 0
+      ? Math.round((st.correct || 0) / answered * 100) + '%'
+      : '—');
+    setText('me-side-login', name ? (myEmail() || '本地账号') : '未登录');
+    setText('me-side-store', loggedIn() ? '云端同步' : '本机');
+
+    /* --- 4. 我的分享：从全站信息流里筛出自己发布的 --- */
+    var postsBox = document.getElementById('me-posts');
+    if (postsBox && name) {
+      postsBox.innerHTML = '<div class="empty-state">正在载入…</div>';
+      loadFeed(function (all) {
+        var mine = all.filter(function (p) { return p.author === name; });
+        if (!mine.length) {
+          postsBox.innerHTML =
+            '<div class="empty-state">' +
+            '<p style="margin:0 0 14px;">你还没有分享过作品。读到喜欢的一首，或写下自己的句子。</p>' +
+            '<a class="btn btn--primary" href="community.html">去社区分享</a>' +
+            '</div>';
+          return;
+        }
+        postsBox.innerHTML = mine.map(function (p) { return postCard(p, true); }).join('');
+        fillClassicBodies(postsBox);
+      });
+    } else if (postsBox) {
+      postsBox.innerHTML =
+        '<div class="empty-state">' +
+        '<p style="margin:0 0 14px;">登录后就能在这里看到自己发布过的分享。</p>' +
+        '<a class="btn btn--primary" href="auth.html">登录 / 注册</a>' +
+        '</div>';
+    }
+
+    /* 退出登录（页内按钮；顶栏的退出走全局委托） */
+    var outBtn = document.getElementById('me-signout');
+    if (outBtn) outBtn.addEventListener('click', function () {
+      Auth.logout(function () { location.reload(); });
+    });
+  }
+
+  /* 「我的」页两个小工具：找不到元素就静默跳过，不抛错 */
+  function setNum(id, v) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = String(v);
+  }
+  function setHint(id, t) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = t;
+  }
+  function setText(id, t) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = t;
   }
 
   /* 退出登录（事件委托，全站通用） */
@@ -2333,6 +2476,7 @@
     initAuthForm();
     initAuthUI();
     initHome();
+    initMe();
 
     /* 云端会话恢复：SDK 就绪后若发现已登录会话，补画顶栏与信息流 */
     if (window.Cloud && window.Cloud.ready) {

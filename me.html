@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>我的 · 诗意中国</title>
+  <meta name="description" content="我的诗词学习空间：已学篇目、收藏夹、挑战成绩、错题本与我的分享。" />
+  <meta name="keywords" content="我的,学习进度,收藏,错题本,诗词学习,诗意中国" />
+  <meta name="robots" content="noindex,follow" />
+  <link rel="canonical" href="https://qq2762457576.github.io/Poetic_China/me.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="诗意中国" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="我的 · 诗意中国" />
+  <meta property="og:description" content="我的诗词学习空间：已学篇目、收藏夹、挑战成绩、错题本与我的分享。" />
+  <meta property="og:url" content="https://qq2762457576.github.io/Poetic_China/me.html" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="alternate icon" href="assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910e" />
+</head>
+<body data-page="me">
+
+  <!-- ============ 顶部导航 ============ -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <button class="icon-btn only-mobile" data-menu-toggle aria-label="打开菜单">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H20" stroke="#221E1A" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+
+        <a class="brand" href="index.html">
+          <span class="seal">诗</span>
+          <span class="brand-name">诗意中国</span>
+        </a>
+
+        <nav class="nav only-desktop">
+          <a href="index.html">首页</a>
+          <a href="library.html">诗词库</a>
+          <a href="community.html">社区广场</a>
+          <a href="challenge.html">挑战闯关</a>
+          <a href="study.html">诗词课堂</a>
+        </nav>
+
+        <div class="header-actions">
+          <a class="icon-btn only-mobile" href="library.html" aria-label="搜索">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#221E1A" stroke-width="1.7"/><path d="M16.5 16.5L21 21" stroke="#221E1A" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </a>
+          <!-- 账号区：未登录显示登录/注册入口，登录后显示笔名与退出（JS 控制） -->
+          <div class="only-desktop header-account" id="header-account">
+            <span class="account-name" id="header-account-name"></span>
+            <a href="javascript:void(0)" class="account-signout" id="header-signout">退出</a>
+          </div>
+          <div class="only-desktop header-guest" id="header-guest" style="display:flex;align-items:center;gap:20px;">
+            <a href="auth.html">登录</a>
+            <a class="btn btn--primary" style="padding:11px 24px;" href="auth.html">免费注册</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="mobile-menu">
+      <a data-tab="home" href="index.html">首页</a>
+      <a data-tab="library" href="library.html">诗词库</a>
+      <a data-tab="community" href="community.html">社区广场</a>
+      <a data-tab="challenge" href="challenge.html">挑战闯关</a>
+      <a data-tab="class" href="study.html">诗词课堂</a>
+      <a data-tab="me" href="me.html" class="is-active">我的</a>
+    </nav>
+    <div class="divider"></div>
+  </header>
+
+  <main>
+    <div class="container">
+      <!-- ============ 页面头部：用户名片 ============ -->
+      <section class="page-head">
+        <div class="page-head-top">
+          <div>
+            <h1 class="page-title">我的</h1>
+            <p class="page-subtitle" id="me-subtitle">你的诗词学习空间</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 未登录提示条：登录后自动隐藏 -->
+      <div class="card me-guest-card" id="me-guest-card" hidden>
+        <div class="me-guest-text">
+          <h3>登录后进度不丢</h3>
+          <p>现在标记的已学、收藏与成绩都只存在这台设备上。登录后会自动合并上云，换设备也能接着学。</p>
+        </div>
+        <a class="btn btn--primary" href="auth.html">登录 / 注册</a>
+      </div>
+
+      <!-- 账号卡：登录后显示，含退出入口 -->
+      <div class="card me-account-card" id="me-account-card" hidden>
+        <div class="me-account-row">
+          <span class="avatar avatar--lg" id="me-avatar">诗</span>
+          <div class="me-account-info">
+            <h3 id="me-name">诗友</h3>
+            <p id="me-account-line"></p>
+          </div>
+          <button class="btn btn--ghost" id="me-signout" type="button">退出登录</button>
+        </div>
+      </div>
+
+      <!-- ============ 数据总览：四个数字卡 ============ -->
+      <section class="me-stats" id="me-stats">
+        <a class="card me-stat-card" href="library.html">
+          <div class="me-stat-num" id="me-stat-learned">0</div>
+          <div class="me-stat-label">已学篇目</div>
+          <div class="me-stat-hint" id="me-stat-learned-hint">在课堂页点「已学」会记在这里</div>
+        </a>
+        <a class="card me-stat-card" href="library.html">
+          <div class="me-stat-num" id="me-stat-favs">0</div>
+          <div class="me-stat-label">收藏</div>
+          <div class="me-stat-hint" id="me-stat-favs-hint">收藏喜欢的篇目，随时回看</div>
+        </a>
+        <a class="card me-stat-card" href="challenge.html">
+          <div class="me-stat-num" id="me-stat-score">0</div>
+          <div class="me-stat-label">挑战最高分</div>
+          <div class="me-stat-hint" id="me-stat-score-hint">还没有成绩，去闯一关</div>
+        </a>
+        <a class="card me-stat-card" href="challenge.html">
+          <div class="me-stat-num" id="me-stat-wrong">0</div>
+          <div class="me-stat-label">错题待复习</div>
+          <div class="me-stat-hint" id="me-stat-wrong-hint">答错的题会自动收进错题本</div>
+        </a>
+      </section>
+
+      <!-- ============ 主体：左内容 + 右侧栏 ============ -->
+      <div class="page-body page-body--me">
+
+        <!-- 左：我的分享 -->
+        <div>
+          <div class="card">
+            <h3 class="section-title">我的分享</h3>
+            <div id="me-posts"></div>
+          </div>
+        </div>
+
+        <!-- 右侧栏 -->
+        <div>
+          <!-- 已学 / 收藏 快捷入口 -->
+          <div class="card side-card">
+            <h4>学习记录</h4>
+            <a class="me-link" href="library.html">
+              <span>继续学习</span>
+              <span class="me-link-arrow">→</span>
+            </a>
+            <a class="me-link" href="challenge.html">
+              <span>错题本</span>
+              <span class="me-link-arrow" id="me-link-wrong">0 题 →</span>
+            </a>
+            <a class="me-link" href="study.html">
+              <span>诗词课堂</span>
+              <span class="me-link-arrow">→</span>
+            </a>
+          </div>
+
+          <!-- 挑战成绩明细 -->
+          <div class="card side-card">
+            <h4>挑战成绩</h4>
+            <div class="rank-row"><span>历史最高分</span><span id="me-side-score">0</span></div>
+            <div class="divider" style="margin:10px 0;"></div>
+            <div class="rank-row"><span>最高连击</span><span id="me-side-streak">0</span></div>
+            <div class="divider" style="margin:10px 0;"></div>
+            <div class="rank-row"><span>总正确率</span><span id="me-side-accuracy">—</span></div>
+          </div>
+
+          <!-- 账号 -->
+          <div class="card side-card">
+            <h4>账号</h4>
+            <div class="rank-row"><span>登录方式</span><span id="me-side-login">未登录</span></div>
+            <div class="divider" style="margin:10px 0;"></div>
+            <div class="rank-row"><span>数据存储</span><span id="me-side-store">本机</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ 页脚 ============ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand">
+            <span class="seal">诗</span>
+            <span class="brand-name" style="color:#F3EEE4;">诗意中国</span>
+          </div>
+          <p class="slogan">读诗 · 学诗 · 写诗，与同好共此一轮明月</p>
+        </div>
+        <div class="footer-col">
+          <h4>读诗</h4>
+          <a href="library.html">诗词库</a>
+          <a href="index.html">每日精选</a>
+          <a href="library.html">诗人年表</a>
+        </div>
+        <div class="footer-col">
+          <h4>学习</h4>
+          <a href="study.html">诗词课堂</a>
+          <a href="challenge.html">挑战闯关</a>
+          <a href="me.html">我的进度</a>
+        </div>
+        <div class="footer-col">
+          <h4>社区</h4>
+          <a href="community.html">社区广场</a>
+          <a href="community.html">发表作品</a>
+          <a href="community.html">诗友榜</a>
+        </div>
+      </div>
+      <div class="footer-bottom">2026 诗意中国 · 诗词原文源自公开古籍，注释与译文由社区共同编校</div>
+    </div>
+  </footer>
+
+  <!-- ============ 底部导航（移动端） ============ -->
+  <nav class="tabbar">
+    <div class="tabbar-inner">
+      <a class="tab-item" data-tab="home" href="index.html">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 10.5L12 4L20 10.5V19C20 19.55 19.55 20 19 20H5C4.45 20 4 19.55 4 19V10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <span>首页</span>
+      </a>
+      <a class="tab-item" data-tab="library" href="library.html">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 5.5C4 4.95 4.45 4.5 5 4.5H10C10.55 4.5 11 4.95 11 5.5V19.5C11 20.05 10.55 20.5 10 20.5H5C4.45 20.5 4 20.05 4 19.5V5.5Z" stroke="currentColor" stroke-width="1.6"/><path d="M13 5.5C13 4.95 13.45 4.5 14 4.5H19C19.55 4.5 20 4.95 20 5.5V19.5C20 20.05 19.55 20.5 19 20.5H14C13.45 20.5 13 20.05 13 19.5V5.5Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span>诗词库</span>
+      </a>
+      <a class="tab-item" data-tab="challenge" href="challenge.html">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 4H17V10C17 13.31 14.31 16 11 16C7.69 16 5 13.31 5 10V4H7Z" stroke="currentColor" stroke-width="1.6"/><path d="M7 6H5M17 6H19M11 16V20M8 20H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>挑战</span>
+      </a>
+      <a class="tab-item" data-tab="class" href="study.html">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 7.5L12 4L21 7.5L12 11L3 7.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10V15.5C7 15.5 9.5 17 12 17C14.5 17 17 15.5 17 15.5V10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>课堂</span>
+      </a>
+      <a class="tab-item" data-tab="me" href="me.html">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20C5 16.5 8.13 14 12 14C15.87 14 19 16.5 19 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>我的</span>
+      </a>
+    </div>
+  </nav>
+
+  <script src="assets/data/site-stats.js?v=20260910a" defer></script>
+  <script src="assets/data/index-meta.js?v=20260910e" defer></script>
+  <script src="assets/js/config.js?v=20260910e" defer></script>
+  <script src="assets/js/cloud.js?v=20260910e" defer></script>
+  <script src="assets/js/main.js?v=20260910e" defer></script>
+</body>
+</html>

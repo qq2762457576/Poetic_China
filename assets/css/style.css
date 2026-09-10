@@ -1531,3 +1531,121 @@ form[data-panel][hidden] { display: none; }
   font-size: 12px; color: var(--ink-400, #9a938a);
   margin-top: 8px; line-height: 1.6;
 }
+
+/* ============ 2026-09-10d 「我的」个人中心 ============ */
+
+/* --- 顶栏账号区 / 访客区 --- */
+.header-account { display: flex; align-items: center; gap: 16px; }
+.header-account[hidden] { display: none; }
+.account-name {
+  font-size: 15px; color: var(--ink-700, #4a453d); font-weight: 500;
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.account-signout {
+  font-size: 14px; color: var(--ink-400, #9a938a); text-decoration: none;
+  transition: color .2s ease;
+}
+.account-signout:hover { color: var(--cinnabar, #9c3b2e); }
+.header-guest[hidden] { display: none; }
+.header-guest a {
+  font-size: 15px; color: var(--ink-700, #4a453d); text-decoration: none;
+}
+.header-guest a:hover { color: var(--cinnabar, #9c3b2e); }
+
+/* --- 未登录提示条 --- */
+.me-guest-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  padding: 22px 28px; margin-bottom: 22px;
+  background: var(--paper, #faf7f1);
+  border: 1px dashed var(--ink-200, #d8d2c8); box-shadow: none;
+}
+.me-guest-card[hidden] { display: none; }
+.me-guest-text h3 {
+  font-size: 17px; font-weight: 600; color: var(--ink-800, #33302b);
+  margin: 0 0 6px;
+}
+.me-guest-text p {
+  margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink-500, #7a746a);
+}
+.me-guest-card .btn { flex: none; }
+
+/* --- 账号卡 --- */
+.me-account-card { padding: 24px 28px; margin-bottom: 22px; }
+.me-account-card[hidden] { display: none; }
+.me-account-row { display: flex; align-items: center; gap: 18px; }
+.avatar--lg {
+  width: 60px; height: 60px; font-size: 24px;
+  background: var(--cinnabar, #9c3b2e); color: #fff;
+}
+.me-account-info { flex: 1; min-width: 0; }
+.me-account-info h3 {
+  font-size: 20px; font-weight: 600; color: var(--ink-900, #22201c);
+  margin: 0 0 4px; font-family: var(--font-serif);
+}
+.me-account-info p {
+  margin: 0; font-size: 13px; color: var(--ink-400, #9a938a);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* --- 四个数字卡 --- */
+.me-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px; margin-bottom: 30px;
+}
+.me-stat-card {
+  padding: 22px 24px; text-decoration: none; display: block;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.me-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cinnabar, #9c3b2e);
+}
+.me-stat-num {
+  font-family: var(--font-serif); font-size: 34px; font-weight: 600;
+  color: var(--cinnabar, #9c3b2e); line-height: 1.15;
+}
+.me-stat-label {
+  font-size: 14px; color: var(--ink-700, #4a453d); margin-top: 6px; font-weight: 500;
+}
+.me-stat-hint {
+  font-size: 12px; color: var(--ink-400, #9a938a); margin-top: 8px; line-height: 1.6;
+}
+
+/* --- 两栏布局 --- */
+.page-body--me { grid-template-columns: minmax(0, 1fr) 320px !important; }
+.page-body--me .section-title {
+  font-size: 17px; font-weight: 600; margin: 0 0 16px;
+  color: var(--ink-800, #33302b);
+}
+.page-body--me .empty-state { padding: 24px 0; }
+.page-body--me .post-card + .post-card { margin-top: 18px; }
+
+/* --- 右侧栏快捷链接 --- */
+.me-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 0; font-size: 14px; color: var(--ink-700, #4a453d);
+  text-decoration: none; border-top: 1px dashed var(--ink-100, #e8e2d6);
+  transition: color .2s ease;
+}
+.me-link:first-of-type { border-top: none; }
+.me-link:hover { color: var(--cinnabar, #9c3b2e); }
+.me-link-arrow { font-size: 12px; color: var(--ink-300, #b9b1a4); }
+.me-link:hover .me-link-arrow { color: var(--cinnabar, #9c3b2e); }
+
+@media (max-width: 1100px) {
+  .me-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .page-body--me { grid-template-columns: 1fr !important; }
+  .page-body--me > :last-child { display: block; margin-top: 24px; }
+}
+@media (max-width: 620px) {
+  .me-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .me-stat-card { padding: 16px 16px; }
+  .me-stat-num { font-size: 26px; }
+  .me-stat-hint { display: none; }
+  .me-guest-card { flex-direction: column; align-items: stretch; gap: 16px; padding: 20px; }
+  .me-guest-card .btn { width: 100%; }
+  .me-account-row { flex-wrap: wrap; }
+  .page-body--me .section-title { font-size: 16px; }
+}
