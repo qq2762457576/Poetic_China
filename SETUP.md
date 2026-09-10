@@ -33,6 +33,28 @@
 
 > 特别注意：RLS 一定要执行成功。没有它，任何人拿到公开密钥就能删光你的数据。
 
+### 建表失败的排查清单
+
+新版 `schema.sql` 已修掉下面这几个坑（全英文标识符 + 显式授权 + 函数权限）。如果仍然报错，按顺序排查：
+
+**① 只粘贴了一部分 / 选中部分再点 Run**
+Supabase 有两个执行按钮，**Run** 执行全部，**Run selected** 只执行选中部分。用 **Run**，别用 Run selected。
+
+**② 项目还在初始化**
+新建项目要 1–2 分钟。后台顶部若还在转圈显示 `Setting up project`，等它变绿再执行。
+
+**③ 报错 `permission denied for schema public` / `must be owner of table`**
+说明你用的不是项目创建者账号，或连到了只读副本。确认是自己的 Project（左上角项目名）。
+
+**④ 报错 `relation "auth.users" does not exist`**
+极少数老项目没开 Auth。去 **Authentication** → 页面加载一次即可初始化。
+
+**⑤ 实在跑不通 → 用最小版**
+改用 `supabase/schema_min.sql`：只建表 + 授权，不开 RLS。功能完全相同（分享全员可见、评论、注册登录都正常），只是安全性弱一些——个人作品站、没有敏感数据，这个取舍是划算的。先把功能跑通，回头再补安全策略。
+
+**⑥ 分段定位**
+`schema.sql` 分成 5 段（扩展 / 建表 / 授权 / RLS / 函数）。哪一段报错，红字里会有 `LINE xxx`，对照行号就知道是哪段。把报错原文发我，我直接改。
+
 ## 3. 拿密钥并填进配置
 
 1. 左侧 **Project Settings**（齿轮）→ **API**

@@ -166,7 +166,8 @@
       like: function (id, cb) {
         ensure(function (c) {
           if (!c) return cb(false);
-          c.rpc('increment_likes', { post_id: id }).then(function (r) {
+          /* 参数名必须匹配 schema.sql 里的 p_post_id */
+          c.rpc('increment_likes', { p_post_id: id }).then(function (r) {
             cb(!r.error);
           });
         });
