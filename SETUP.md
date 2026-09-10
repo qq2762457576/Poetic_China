@@ -86,13 +86,29 @@ window.SHICI_CONFIG = {
 
 > ⚠️ 绝对不要把 `service_role` 那个密钥填进来。它权限无限，一旦进前端等于把数据库钥匙挂在大门口。
 
-## 4. 关闭邮箱验证（可选，但建议先关）
+## 4. 邮箱验证：关掉还是保留
 
-不然注册后要去邮箱点链接才能登录，测试时很烦。
+**它是什么**：注册后 Supabase 给这个邮箱发一封确认信，用户必须点开信里的链接，账号才激活、才能登录。不点也能注册成功，但登录会被拒绝。
 
-左侧 **Authentication** → **Providers** → **Email** → 关掉 **Confirm email** → Save。
+**当前状态**：你的项目**默认是开启的**（服务端 `mailer_autoconfirm: false`）。
 
-想保留验证也行，注册时页面会提示"请到邮箱点确认链接"，流程是通的。
+### 方案 A：关掉（推荐，个人站适用）
+
+左侧 **Authentication** → **Sign In / Providers** → **Email** → 关掉 **Confirm email** → **Save**
+
+关掉后注册完直接登录，不用收邮件。代价是别人可以拿任意邮箱注册（反正本站也不靠邮箱做敏感操作）。
+
+**为什么推荐关**：Supabase 免费项目自带的邮件服务每小时只能发**个位数**封，且极易进垃圾箱。真开放给外人注册时，大部分人收不到信，等于注册功能失灵。要真正用邮箱验证，得自己配 SMTP（Authentication → Emails → SMTP Settings）。
+
+### 方案 B：保留验证（必须先做这一步）
+
+如果保留，**一定要设 Site URL**，否则用户点确认链接会跳到 `localhost:3000`，看起来像失败：
+
+左侧 **Authentication** → **URL Configuration** → 填这两项：
+- **Site URL**：`https://qq2762457576.github.io/Poetic_China/`
+- **Redirect URLs**：加一行 `https://qq2762457576.github.io/Poetic_China/**`
+
+前端已经做了处理：开启验证时注册页会停在原地提示"请到邮箱点确认链接"，不会跳转；用户点信里链接回来后自动完成登录。
 
 ## 5. 验证是否生效
 
