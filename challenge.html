@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910k" data-page-node-id="jf4JVMs0MGdIZA1vPZbKij" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910l" data-page-node-id="jf4JVMs0MGdIZA1vPZbKij" />
 </head>
 <body data-page="challenge" data-page-node-id="yqaP7czlMAXScSLLH4VBYe">
 
@@ -143,7 +143,10 @@
               <div id="result-score" style="font-family:'Noto Serif SC',serif;font-size:64px;font-weight:700;color:var(--cinnabar);line-height:1.25;">0</div>
               <div id="result-detail" style="font-size:14px;color:var(--ink-500);margin-top:4px;"></div>
               <div id="result-comment" style="font-family:'Noto Serif SC',serif;font-size:17px;margin-top:14px;color:var(--ink-700);"></div>
-              <button class="btn btn--primary" id="result-restart" style="margin-top:22px;">再来一轮</button>
+              <div class="result-actions">
+                <button class="btn btn--primary" id="result-restart" type="button">再来一轮</button>
+                <button class="btn btn--ghost" id="result-review-wrong" type="button" hidden>再练错题</button>
+              </div>
             </div>
 
             <div style="display:flex;gap:12px;flex-wrap:wrap;" data-page-node-id="ddgeOEDCsX9iLbRYiuMkB5">
@@ -190,7 +193,8 @@
             <p style="margin:0;">还没有错题。答错的题会自动收进来，方便回头复习。</p>
           </div>
           <div id="wrong-actions" hidden style="margin-top:12px;" data-page-node-id="Wr0ngAct10nCc0r3eRp">
-            <button class="btn btn--ghost btn--block" id="wrong-clear" type="button" data-page-node-id="Wr0ngClr00Cc0r3eRpB">清空错题本</button>
+            <button class="btn btn--primary btn--block" id="wrong-practice" type="button" data-page-node-id="Wr0ngPrc00Cc0r3eRpB">再练一遍</button>
+            <button class="btn btn--ghost btn--block" id="wrong-clear" type="button" style="margin-top:8px;" data-page-node-id="Wr0ngClr00Cc0r3eRpB">清空错题本</button>
           </div>
         </div>
       </section>
@@ -258,9 +262,9 @@
   </nav>
 
   <script src="assets/data/site-stats.js?v=20260910a" defer></script>
-  <script src="assets/data/banks.js?v=20260910k" defer></script>
-  <script src="assets/js/config.js?v=20260910k" defer></script>
-  <script src="assets/js/cloud.js?v=20260910k" defer></script>
-  <script src="assets/js/main.js?v=20260910k" defer></script>
+  <script src="assets/data/banks.js?v=20260910l" defer></script>
+  <script src="assets/js/config.js?v=20260910l" defer></script>
+  <script src="assets/js/cloud.js?v=20260910l" defer></script>
+  <script src="assets/js/main.js?v=20260910l" defer></script>
 </body>
 </html>

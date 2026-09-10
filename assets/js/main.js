@@ -2387,6 +2387,79 @@
     return out;   /* 提示不出来就返回空 —— 由用户自己选，绝不硬凑 */
   }
 
+  /* 错题解释卡（PRD 第十九条闭环的「解释」环节）
+   * 只呈现两类**已有事实**：① 题目自带的原句 tip ② 你在选项里挑错的那个是否为原诗真实句子。
+   * ⚠️ 不做「为什么错」的生成式分析 —— 那是编造（PRD 第四十条）。
+   *    提示语只描述客观情况（正确答案是第几项、原句是什么），不评价用户。 */
+  function buildWrongExplain(q) {
+    var letters = ['A', 'B', 'C', 'D'];
+    var ansLetter = letters[q.answer] || '';
+    var esc2 = esc;
+    return (
+      '<span class="explain-title">差一点 —— 正确答案是 ' + esc2(ansLetter) + '</span>' +
+      '<span class="explain-line">' + esc2(q.tip || '') + '</span>' +
+      '<span class="explain-actions">' +
+      '<a class="explain-link" href="#" data-explain-study ' +
+      'data-ex-title="' + esc2(q.title || '') + '" data-ex-author="' + esc2(q.author || '') + '">' +
+      '去课堂读这首' + esc2(q.author ? q.author + '《' + q.title + '》' : q.title || '') + '</a>' +
+      '</span>'
+    );
+  }
+
+  /* 从题目本体重建一道同类型的新题（错题「再练」用）。
+   * ⚠️ 错题本只存了 title/author/stem/tip/mode，**没有存 options/answer** ——
+   *    这是有意的：原样回放等于让用户背答案。改为按 title+author 找回原诗、
+   *    用同一题型重新出题，每次再练都是真练。 */
+  function rebuildQuestionFromWrong(item) {
+    var maker = QUIZ_MAKER[item.mode] || QUIZ_MAKER.fill;
+    var poem = null;
+    try { poem = findPoemLoose(item.title, item.author); } catch (e) { poem = null; }
+    if (poem && poem.lines && poem.lines.length) {
+      var q = maker(QUIZ_POOL, poem);
+      if (q) return q;
+    }
+    /* 索引里暂时找不到原诗（分片未载入）—— 用题目本体做一个降级版：
+     * 直接把原句作为正确项、题干里的方框作为题面。仍然只搬事实，不编内容。 */
+    return fallbackQuestionFromWrong(item);
+  }
+
+  function fallbackQuestionFromWrong(item) {
+    var tip = String(item.tip || '').replace(/^原句[：:]\s*/, '');
+    var correct = tip.replace(/[，。！？、；：\s]/g, '');
+    if (!correct) return null;
+    var made = makeOptions(correct, function (exclude) { return randomLineOfLen(correct.length, exclude); });
+    return {
+      stem: item.stem || '',
+      title: item.title || '',
+      author: item.author || '',
+      source: (item.author || '') + '《' + (item.title || '') + '》 · 复习错题',
+      options: made.options,
+      answer: made.answer,
+      tip: item.tip || ''
+    };
+  }
+
+  /* 错题「再练」：把错题本里的题组成一副牌，走与正式挑战相同的答题流程。
+   * 答对即视为掌握（从错题本移除），答错则保留 —— 这才是闭环的「重新挑战」。
+   * 实现方式：把牌放进 window.__wrongPracticeDeck，newDeck() 会优先取它；
+   * 摆好牌后切到 fill 模式重新开局（走真实的模式卡点击路径，不伪造内部状态）。 */
+  function startWrongPractice() {
+    var arr = loadWrongBook();
+    if (!arr.length) return;
+    var deck = [];
+    arr.slice(0, QUIZ_PER_RUN).forEach(function (it) {
+      var q = rebuildQuestionFromWrong(it);
+      if (q) { q.__wrongKey = wrongKeyOf(it); deck.push(q); }
+    });
+    if (!deck.length) {
+      window.__toast && window.__toast('错题本里的诗暂时找不到原文，请稍后再试。');
+      return;
+    }
+    window.__wrongPracticeDeck = deck;
+    var cardEl = document.querySelector('#mode-row .mode-card[data-mode="fill"]');
+    if (cardEl) cardEl.click();
+  }
+
   /* ---------- 8. 挑战闯关（从诗词库随机出题） ---------- */
   var MODE_NAME = { fill: '填空补全', chain: '上下句接龙', recite: '背诵闯关', exam: '考试闯关', hot: '热门挑战' };
   var QUIZ_PER_RUN = 10;
@@ -2442,6 +2515,13 @@
     for (var t = 0; t < 80; t++) {
       var l = pickOne(QUIZ_LINES);
       if (l.length === len && exclude.indexOf(l) === -1) return l;
+    }
+    /* ⚠️ 兜底：严格等长找不满时（冷僻句长在题库里可能没有同长句），
+     *    放宽到「长度接近且不等于原句」——否则会退化出选项不足 4 个的假题，
+     *    用户闭眼都能选对，练习就失去意义。仍然排除原句，不会把答案混进去。 */
+    for (var t2 = 0; t2 < 80; t2++) {
+      var l2 = pickOne(QUIZ_LINES);
+      if (Math.abs(l2.length - len) <= 2 && exclude.indexOf(l2) === -1) return l2;
     }
     return null;
   }
@@ -2631,6 +2711,8 @@
     }
     var wrongClear = document.getElementById('wrong-clear');
     if (wrongClear) wrongClear.addEventListener('click', clearWrongBook);
+    var wrongPractice = document.getElementById('wrong-practice');
+    if (wrongPractice) wrongPractice.addEventListener('click', startWrongPractice);
 
     if (window.QUIZ_POOL_DATA && window.QUIZ_POOL_DATA.length) {
       buildQuizPool();
@@ -2701,6 +2783,15 @@
     });
 
     function newDeck() {
+      /* 错题再练：若错题本发来了一副牌，优先用它（PRD 第十九条「重新挑战」）。
+       * 这副牌答完即清空，不会影响后续正常出题。 */
+      if (window.__wrongPracticeDeck && window.__wrongPracticeDeck.length) {
+        st.deck = window.__wrongPracticeDeck;
+        window.__wrongPracticeDeck = null;
+        st.index = 0;
+        st.mode = 'fill';
+        return;
+      }
       st.deck = [];
       if (st.mode === 'exam' || st.mode === 'hot') {
         var pool = shuffleArr(BANK_POOLS[st.mode].slice());
@@ -2720,7 +2811,10 @@
       var q = st.deck[st.index];
       stemEl.textContent = q.stem;
       sourceEl.textContent = q.source;
-      indexEl.textContent = '\u7B2C ' + (st.index + 1) + ' / ' + st.deck.length + ' \u9898 \u00B7 ' + MODE_NAME[st.mode];
+      /* 错题再练的牌带 __wrongKey 标记 —— 进度条要如实说是「错题复习」，
+       * 否则用户会以为自己开了一局普通填空。 */
+      var deckLabel = q && q.__wrongKey ? '错题复习' : MODE_NAME[st.mode];
+      indexEl.textContent = '\u7B2C ' + (st.index + 1) + ' / ' + st.deck.length + ' \u9898 \u00B7 ' + deckLabel;
       feedbackEl.hidden = true;
       nextBtn.hidden = true;
       st.answered = false;
@@ -2762,6 +2856,7 @@
       var scoreEl = document.getElementById('result-score');
       var detailEl = document.getElementById('result-detail');
       var commentEl = document.getElementById('result-comment');
+      var reviewBtn = document.getElementById('result-review-wrong');
       if (scoreEl) scoreEl.textContent = String(score);
       if (detailEl) detailEl.textContent = '答对 ' + st.correct + ' 题 · 答错 ' + st.wrong + ' 题 · 满分 100';
       if (commentEl) {
@@ -2770,6 +2865,8 @@
           : score >= 60 ? '根基已稳，勤加练习更上层楼。'
           : '诗海无涯，回头再战。';
       }
+      /* 答错过的才给「再练错题」入口 —— 全对时这个按钮没有意义 */
+      if (reviewBtn) reviewBtn.hidden = !(st.wrong > 0 && loadWrongBook().length > 0);
       if (resultEl) resultEl.hidden = false;
       if (score > (stats.bestScore || 0)) {
         stats.bestScore = score;
@@ -2835,6 +2932,11 @@
         /* 答错就进错题本，之后可在错题本回看、重读原诗 */
         addWrong({ title: q.title, author: q.author, stem: q.stem, tip: q.tip, mode: st.mode });
       }
+      /* 错题再练答对 → 视为掌握，移出错题本（PRD 第二十条「掌握」）。
+       * 只在再练场景生效：正常挑战答对不动错题本，避免误清。 */
+      if (ok && q.__wrongKey) {
+        removeWrong(q.__wrongKey);
+      }
       st.done += 1;
       stats.total += 1;
       stats.done[st.mode] = (stats.done[st.mode] || 0) + 1;
@@ -2842,12 +2944,30 @@
       saveChallengeStats(stats);
       updateScore();
 
-      feedbackText.textContent = ok ? '\u7B54\u5BF9\u4E86\uFF01' + q.tip : '\u518D\u60F3\u60F3\u2014\u2014\u6B63\u786E\u7B54\u6848\u5DF2\u6807\u51FA\u3002' + q.tip;
+      /* 答错 → 当场给出解释 + 回课堂的入口（PRD 第十九条闭环的「解释」环节）
+       * ⚠️ 解释内容全部来自题目自带的 tip / 原诗，不做任何生成式补写。
+       *    走 getElementById 而不是 textContent，是因为这里要放结构化的解释卡。 */
+      if (ok) {
+        feedbackText.textContent = '答对了！' + q.tip;
+      } else {
+        feedbackText.innerHTML = buildWrongExplain(q);
+      }
       feedbackEl.hidden = false;
       nextBtn.hidden = false;
       nextBtn.textContent = st.index + 1 < st.deck.length ? '下一题' : '查看结算';
       restartBtn.hidden = false;
     });
+
+    /* 答错后的「去读这首」，用事件委托（解释卡是动态重建的） */
+    if (feedbackEl) {
+      feedbackEl.addEventListener('click', function (e) {
+        var a = e.target.closest('[data-explain-study]');
+        if (!a) return;
+        e.preventDefault();
+        location.href = 'study.html?title=' + encodeURIComponent(a.getAttribute('data-ex-title')) +
+          '&author=' + encodeURIComponent(a.getAttribute('data-ex-author'));
+      });
+    }
 
     if (nextBtn) {
       nextBtn.addEventListener('click', function () {
@@ -2882,6 +3002,19 @@
         newDeck();
         updateScore();
         render();
+      });
+    }
+
+    /* 结算页「再练错题」：只有真答错了才出现，避免空入口 */
+    var resultReviewWrong = document.getElementById('result-review-wrong');
+    if (resultReviewWrong) {
+      resultReviewWrong.addEventListener('click', function () {
+        st.streak = 0;
+        st.done = 0;
+        st.correct = 0;
+        st.wrong = 0;
+        hideResult();
+        startWrongPractice();
       });
     }
 

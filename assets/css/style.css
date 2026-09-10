@@ -1449,6 +1449,35 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 .wrong-del:hover { color: var(--cinnabar); }
 .wrong-empty { padding: 12px 0; font-size: 13px; line-height: 22px; }
 
+/* --- 答错后的解释卡（PRD 第十九条闭环的「解释」环节）
+   只呈现客观事实：正确答案是第几项 + 原句 + 回课堂入口。
+   不做「你为什么错」的评价。 --- */
+.explain-title {
+  display: block; font-weight: 600; color: var(--cinnabar);
+  margin-bottom: 6px;
+}
+.explain-line {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 15px; line-height: 1.8; color: var(--ink-800, #33302b);
+}
+.explain-actions { display: block; margin-top: 10px; }
+.explain-link {
+  font-size: 13px; color: var(--cinnabar); text-decoration: none;
+  border-bottom: 1px solid rgba(178, 58, 44, .35);
+}
+.explain-link:hover { border-bottom-color: var(--cinnabar); }
+.explain-link:focus-visible {
+  outline: 2px solid var(--cinnabar); outline-offset: 3px; border-radius: 3px;
+}
+
+/* 结算页按钮组 */
+.result-actions {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  margin-top: 22px;
+}
+.result-actions .btn { margin-top: 0; }
+
 /* 响应式：1180px 以下 */
 @media (max-width: 1180px) {
   .page-body--community { grid-template-columns: minmax(0, 1fr) 280px !important; }
