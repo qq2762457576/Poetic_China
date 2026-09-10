@@ -1885,3 +1885,145 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   .step-nav .btn { flex: 1; min-width: 120px; }
   .step-nav-progress { order: -1; width: 100%; text-align: center; }
 }
+
+/* ==========================================================
+   法律页（隐私政策 / 用户协议）
+   目的：纯文本长页面，首要目标是「能安心读完」——
+   因此限制测量宽度（约 72 字符/行）、加大行距、清晰的层级锚点。
+   ========================================================== */
+.legal-wrap {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 28px;
+  padding: 32px 0 64px;
+  align-items: start;
+}
+
+/* --- 左侧目录：sticky 跟随，长文阅读时随时可跳 --- */
+.legal-toc {
+  position: sticky;
+  top: calc(var(--header-h) + 20px);
+  padding: 20px 22px;
+}
+.legal-toc h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-800);
+  letter-spacing: .04em;
+}
+.legal-toc ol {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: 13.5px;
+  line-height: 2;
+  color: var(--ink-500);
+}
+.legal-toc a {
+  color: var(--ink-600);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color .18s ease, border-color .18s ease;
+}
+.legal-toc a:hover { color: var(--cinnabar); border-bottom-color: var(--cinnabar); }
+.legal-toc a:focus-visible {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --- 正文 --- */
+.legal-body {
+  padding: 44px 52px 52px;
+  /* 长文本测量宽度：中文单字约占字号 1 倍宽，15.5px 字号下
+   * 42em ≈ 650px ≈ 每行 38–42 字，正是中文长文最舒服的区间。
+   * 过宽（>48 字）会让换行难追、眼睛容易跳行，故用 em 而非 px 设限，
+   * 字号调整时测量宽度会跟着等比变化。 */
+  max-width: 42em;
+}
+.legal-meta {
+  margin: 0 0 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed var(--line);
+  font-size: 13px;
+  color: var(--ink-400);
+  letter-spacing: .02em;
+}
+.legal-body > p {
+  margin: 0 0 20px;
+  font-size: 15.5px;
+  line-height: 1.95;
+  color: var(--ink-700);
+}
+.legal-body h2 {
+  margin: 40px 0 16px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-900);
+  /* 锚点跳转时留出顶栏高度，否则标题会被 sticky 导航盖住 */
+  scroll-margin-top: calc(var(--header-h) + 20px);
+}
+.legal-body h3 {
+  margin: 26px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+.legal-body ul,
+.legal-body ol {
+  margin: 0 0 20px;
+  padding-left: 1.4em;
+  font-size: 15.5px;
+  line-height: 1.95;
+  color: var(--ink-700);
+}
+.legal-body li { margin-bottom: 8px; }
+.legal-body li::marker { color: var(--ink-300); }
+.legal-body strong { color: var(--ink-900); font-weight: 600; }
+.legal-body a { color: var(--cinnabar); text-decoration: underline; text-underline-offset: 2px; }
+.legal-body a:focus-visible {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 联系方式：视觉上单独拎出来，方便一眼找到 */
+.legal-contact {
+  padding: 16px 20px;
+  background: var(--sand);
+  border-left: 3px solid var(--cinnabar);
+  border-radius: 2px;
+  font-size: 15.5px;
+  color: var(--ink-800);
+}
+.legal-contact a { font-weight: 600; }
+
+/* 收尾语：与正文区分的浅色小字 */
+.legal-foot {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px dashed var(--line);
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--ink-400);
+}
+
+@media (max-width: 1024px) {
+  .legal-wrap { grid-template-columns: 1fr; gap: 20px; }
+  .legal-toc { position: static; }
+  /* 单栏时目录横排成两列，避免占掉一整屏 */
+  .legal-toc ol {
+    columns: 2;
+    column-gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .legal-wrap { padding: 24px 0 48px; }
+  .legal-body { padding: 28px 20px 32px; }
+  .legal-body > p,
+  .legal-body ul,
+  .legal-body ol { font-size: 15px; line-height: 1.9; }
+  .legal-body h2 { font-size: 18px; margin-top: 32px; }
+  .legal-toc ol { columns: 1; }
+}

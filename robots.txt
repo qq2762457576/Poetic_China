@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+# 登录页：无收录价值，且避免搜索引擎直接把人送进登录流程
 Disallow: /auth.html
+# 云端连接自检工具：仅为站长本地排障用，不该被检索到
+Disallow: /debug.html
 
 Sitemap: https://qq2762457576.github.io/Poetic_China/sitemap.xml
