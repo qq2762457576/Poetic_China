@@ -4,10 +4,10 @@
  */
 window.SITE_STATS={
   "poems": 89927,
-  "authors": 5453,
+  "authors": 5393,
   "dynasties": 10,
   "genres": 8,
   "notes": 449,
   "backgrounds": 82,
-  "updated": "2026-09-10"
+  "updated": "2026-09-11"
 };
