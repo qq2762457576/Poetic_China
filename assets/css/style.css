@@ -1346,3 +1346,58 @@ form[data-panel][hidden] { display: none; }
 
 /* 课堂：背景解析段落 */
 .study-prose--bg { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--ink-200, #d8d2c8); color: var(--ink-600, #6b655c); }
+
+/* ============ 2026-09-09b 评论区 ============ */
+.comment-area {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(120, 110, 96, 0.28);
+}
+.comment-area[hidden] { display: none; }
+.comment-loading,
+.comment-empty {
+  font-size: 13px;
+  color: var(--ink-400, #9a938a);
+  padding: 6px 0;
+}
+.comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.comment-item { display: flex; gap: 10px; align-items: flex-start; }
+.avatar--xs {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ink-100, #efeae1); color: var(--ink-700, #4a453d);
+  font-size: 12px; flex: none;
+}
+.comment-main { flex: 1; min-width: 0; }
+.comment-who { font-size: 12px; color: var(--ink-400, #9a938a); }
+.comment-body {
+  margin: 3px 0 0; font-size: 14px; line-height: 1.7;
+  color: var(--ink-800, #33302b); word-break: break-word;
+}
+.comment-form { display: flex; gap: 8px; margin-top: 4px; }
+.comment-input {
+  flex: 1; min-width: 0; padding: 9px 12px;
+  border: 1px solid var(--ink-200, #d8d2c8); border-radius: 8px;
+  background: var(--paper, #fdfbf6); font-size: 14px;
+  font-family: inherit; color: var(--ink-900, #22201c);
+}
+.comment-input:focus { outline: none; border-color: var(--cinnabar, #9c3b2e); }
+.btn--sm { padding: 8px 16px; font-size: 13px; }
+.comment-form-locked {
+  font-size: 13px; color: var(--ink-400, #9a938a); padding: 4px 0;
+}
+.comment-form-locked a { color: var(--cinnabar, #9c3b2e); text-decoration: none; }
+.comment-form-locked a:hover { text-decoration: underline; }
+.post-foot { display: flex; align-items: center; gap: 10px; }
+.post-foot button {
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--ink-500, #7a746a); font-family: inherit;
+  padding: 4px 0;
+}
+.post-foot button:hover { color: var(--cinnabar, #9c3b2e); }
+
+/* 云端/本地模式角标 */
+.mode-tip {
+  font-size: 12px; color: var(--ink-400, #9a938a);
+  margin-top: 8px; line-height: 1.6;
+}

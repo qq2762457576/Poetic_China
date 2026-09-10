@@ -35,11 +35,18 @@
     return list;
   }
 
-  /* ---------- 账号体系（本地演示版） ----------
-   * 纯静态站没有服务器，账号存 localStorage：密码加盐哈希（https 下 SHA-256，
-   * file:// 等非安全上下文退化为 FNV-1a），会话写 shici_session 全站共享。
-   * 注意：这解决「能注册/登录/保持登录」的产品流程，但不是生产级安全；
-   * 真要多端同步账号，需要接后端（如 Supabase / LeanCloud）。 */
+  /* ---------- 账号体系 ----------
+   * 两种模式，同一套接口：
+   *
+   * 云端模式（config.js 填了 Supabase）
+   *   账号由 Supabase Auth 托管。密码经 HTTPS 送到服务端，用 bcrypt 加盐哈希
+   *   后存 Postgres，前端从不接触也不保存任何密码明文；会话是 JWT，存在
+   *   localStorage 里自动续期，换设备登录同一账号即可。
+   *
+   * 本地模式（未配置）
+   *   账号存 localStorage：密码加盐哈希（https 下 SHA-256，file:// 等
+   *   非安全上下文退化为 FNV-1a），会话写 shici_session。能跑通完整流程，
+   *   但只在当前浏览器有效。 */
   var Auth = (function () {
     var UKEY = 'shici_users';
     var SKEY = 'shici_session';
@@ -63,11 +70,23 @@
     }
     function makeSalt() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
     return {
+      mode: function () { return window.Cloud ? window.Cloud.mode() : 'local'; },
       current: function () {
+        if (window.Cloud && window.Cloud.ready) {
+          var p = window.Cloud.auth.current();
+          if (p) return p.name;
+        }
         var s = store(SKEY, null);
         return s && s.name ? s.name : null;
       },
       register: function (account, name, pwd, cb) {
+        if (window.Cloud && window.Cloud.ready) {
+          return window.Cloud.auth.signUp(account, pwd, name, function (err, r) {
+            if (err) return cb(err);
+            if (r && r.needConfirm) return cb(null, '注册成功！请到邮箱点一下确认链接，回来就能登录');
+            cb(null, '注册成功，已自动登录');
+          });
+        }
         var users = store(UKEY, {});
         if (users[account]) return cb('该账号已注册，直接去登录吧');
         var salt = makeSalt();
@@ -75,10 +94,15 @@
           users[account] = { name: name, salt: salt, hash: h, ts: Date.now() };
           saveStore(UKEY, users);
           saveStore(SKEY, { account: account, name: name, ts: Date.now() });
-          cb(null);
+          cb(null, '注册成功（本地模式，仅本机有效）');
         });
       },
       login: function (account, pwd, cb) {
+        if (window.Cloud && window.Cloud.ready) {
+          return window.Cloud.auth.signIn(account, pwd, function (err) {
+            cb(err);
+          });
+        }
         var u = store(UKEY, {})[account];
         if (!u) return cb('账号不存在，先注册一个吧');
         hash(u.salt + pwd).then(function (h) {
@@ -87,8 +111,12 @@
           cb(null);
         });
       },
-      logout: function () {
+      logout: function (cb) {
+        if (window.Cloud && window.Cloud.ready) {
+          return window.Cloud.auth.signOut(function () { if (cb) cb(); });
+        }
         try { localStorage.removeItem(SKEY); } catch (e) { /* 忽略 */ }
+        if (cb) cb();
       }
     };
   })();
@@ -100,8 +128,13 @@
   var DYNASTY_KEY = { '唐': '唐', '宋': '宋', '先秦': '先秦', '汉魏六朝': '汉魏六朝', '元': '元明清', '明': '明', '清': '元明清', '近现代': '近现代' };
   var GENRE_KEY = { '绝': '诗', '律': '诗', '古': '诗', '诗': '诗', '骚': '诗', '词': '词', '曲': '曲', '赋': '赋', '文': '文' };
 
-  /* POEM_INDEX: [标题,作者,朝代,体裁,徽标,主题,首行] — 页面默认只加载它 */
-  var POEMS = (window.POEM_INDEX || []).map(function (r, i) {
+  /* 索引分片：POEMS 是稀疏数组，下标即全局 id，未载入的分片位置为 undefined。
+   * 首屏只载第 0 片（约 1.7MB 而非 10.1MB），其余在空闲时后台补齐。 */
+  var IDX_META = window.POEM_INDEX_META || { chunks: 1, total: 0, per: 15000 };
+  var POEMS = new Array(IDX_META.total || 0);
+  var _loadedCache = null;
+
+  function makePoem(r, i) {
     return {
       id: i,
       title: r[0],
@@ -116,7 +149,15 @@
       notes: 3 + ((i * 37) % 96),
       readers: (((i * 53) % 900 + 60) / 10).toFixed(1) + ' 万'
     };
-  });
+  }
+  /* 已载入的诗（紧凑数组）。所有遍历都用它，避免踩到 undefined 空洞 */
+  function loadedPoems() {
+    if (!_loadedCache) {
+      _loadedCache = [];
+      for (var i = 0; i < POEMS.length; i++) if (POEMS[i]) _loadedCache.push(POEMS[i]);
+    }
+    return _loadedCache;
+  }
 
   function loadScript(src, cb) {
     var s = document.createElement('script');
@@ -148,15 +189,81 @@
         loadChunk(no, function (arr) { cb(arr[id - no * CHUNK_SIZE] || ''); });
       },
       chunk: loadChunk,
-      chunkCount: Math.ceil(POEMS.length / CHUNK_SIZE)
+      chunkCount: Math.ceil((IDX_META.total || 0) / CHUNK_SIZE)
+    };
+  })();
+
+  /* 索引分片管理：boot 首屏 / ensureAll 后台补齐 / poem 按 id 按需取 */
+  var IndexStore = (function () {
+    var loading = {};
+    var _allStarted = false;
+    var _allDone = false;
+    var _allCbs = [];
+    function load(no, cb) {
+      if (no < 0 || no >= IDX_META.chunks) return cb(false);
+      if (POEMS[no * IDX_META.per] !== undefined) return cb(true);
+      if (loading[no]) { loading[no].push(cb); return; }
+      loading[no] = [cb];
+      loadScript('assets/data/poems-index/p' + no + '.js?v=20260909b', function (ok) {
+        if (ok) {
+          var arr = window['POEM_INDEX_' + no] || [];
+          var off = no * IDX_META.per;
+          for (var i = 0; i < arr.length; i++) POEMS[off + i] = makePoem(arr[i], off + i);
+          _loadedCache = null;
+        }
+        var cbs = loading[no] || [];
+        delete loading[no];
+        cbs.forEach(function (f) { f(ok); });
+      });
+    }
+    function chunkOf(id) { return Math.floor(id / IDX_META.per); }
+    var idle = window.requestIdleCallback
+      ? function (f) { window.requestIdleCallback(f, { timeout: 1200 }); }
+      : function (f) { setTimeout(f, 120); };
+    return {
+      load: load,
+      chunkOf: chunkOf,
+      totalChunks: IDX_META.chunks,
+      loadedCount: function () { return loadedPoems().length; },
+      totalCount: IDX_META.total,
+      boot: function (cb) { load(0, function () { if (cb) cb(); }); },
+      ensureAll: function (onProgress, done) {
+        if (_allDone) { if (done) done(); return; }
+        _allCbs.push({ p: onProgress, d: done });
+        if (_allStarted) return;
+        _allStarted = true;
+        var n = 1;
+        function step() {
+          if (n >= IDX_META.chunks) {
+            _allDone = true;
+            _allCbs.forEach(function (c) { if (c.d) c.d(); });
+            _allCbs = [];
+            return;
+          }
+          load(n, function () {
+            var cnt = loadedPoems().length;
+            _allCbs.forEach(function (c) { if (c.p) c.p(cnt, IDX_META.total); });
+            n += 1;
+            idle(step);
+          });
+        }
+        idle(step);
+      },
+      /* 按 id 取：所在分片未载则先下载，保证深链接/经典分享可用 */
+      poem: function (id, cb) {
+        if (POEMS[id]) return cb(POEMS[id]);
+        if (!(id >= 0) || id >= IDX_META.total) return cb(null);
+        load(chunkOf(id), function () { cb(POEMS[id] || null); });
+      }
     };
   })();
 
   function poemUrl(id) { return 'study.html?id=' + id; }
   function findPoem(id) { return POEMS[id] || null; }
   function findByTitleAuthor(title, author) {
-    for (var i = 0; i < POEMS.length; i++) {
-      if (POEMS[i].title === title && POEMS[i].author === author) return POEMS[i];
+    var list = loadedPoems();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].title === title && list[i].author === author) return list[i];
     }
     return null;
   }
@@ -220,14 +327,19 @@
         var name = val('reg-name');
         var pwd = val('reg-pwd');
         var agree = document.getElementById('reg-agree');
-        if (!/^(\S+@\S+\.\S+|1\d{10})$/.test(account)) return hint(regForm, '账号请填邮箱或 11 位手机号');
+        var cloudMode = window.Cloud && window.Cloud.ready;
+        /* 云端账号体系只认邮箱；本地模式宽松些 */
+        if (cloudMode && !/^\S+@\S+\.\S+$/.test(account)) return hint(regForm, '云端账号请用邮箱注册');
+        if (!cloudMode && !/^(\S+@\S+\.\S+|1\d{10})$/.test(account)) return hint(regForm, '账号请填邮箱或 11 位手机号');
         if (name.length < 2 || name.length > 12) return hint(regForm, '笔名取 2-12 个字');
         if (pwd.length < 8 || !/[a-zA-Z]/.test(pwd) || !/\d/.test(pwd)) return hint(regForm, '密码至少 8 位，且同时包含字母与数字');
         if (agree && !agree.checked) return hint(regForm, '请先勾选同意《社区公约》与《隐私政策》');
         hint(regForm, '注册中…', true);
-        Auth.register(account, name, pwd, function (err) {
+        Auth.register(account, name, pwd, function (err, msg) {
           if (err) return hint(regForm, err);
-          hint(regForm, '注册成功，正在进入诗意中国…', true);
+          /* 邮箱需要点确认链接时，停在页面提示，不跳转 */
+          if (msg && msg.indexOf('确认') !== -1) return hint(regForm, msg, true);
+          hint(regForm, msg || '注册成功，正在进入诗意中国…', true);
           setTimeout(function () { location.href = 'index.html'; }, 700);
         });
       });
@@ -262,7 +374,10 @@
         wrap.innerHTML =
           '<div style="text-align:center;padding:40px 0;">' +
           '<h2 class="form-title">已登录为「' + esc(Auth.current()) + '」</h2>' +
-          '<p class="form-sub" style="margin:12px 0 24px;">学习进度与闯关成绩会在本机自动保存</p>' +
+          '<p class="form-sub" style="margin:12px 0 24px;">' +
+          (window.Cloud && window.Cloud.ready
+            ? '账号已同步云端，换设备登录同一邮箱即可继续'
+            : '学习进度与闯关成绩会在本机自动保存') + '</p>' +
           '<a class="btn btn--primary btn--block" href="index.html">回到首页</a>' +
           '<p class="form-hint" style="margin-top:16px;"><a data-logout style="cursor:pointer;">退出登录</a></p>' +
           '</div>';
@@ -299,8 +414,7 @@
     var btn = e.target.closest('[data-logout]');
     if (!btn) return;
     e.preventDefault();
-    Auth.logout();
-    location.reload();
+    Auth.logout(function () { location.reload(); });
   });
 
   /* ---------- 4. 首页：每日推荐 + 分体裁板块 ----------
@@ -368,7 +482,7 @@
     });
 
     /* 数据条：真实统计（featured.js 附带，免加载全库） */
-    var fstats = window.FEATURED_STATS || { poems: POEMS.length, authors: 0 };
+    var fstats = window.FEATURED_STATS || { poems: IDX_META.total || 0, authors: 0 };
     var statPoems = document.getElementById('stat-poems');
     var statAuthors = document.getElementById('stat-authors');
     if (statPoems) statPoems.textContent = (fstats.poems || 0).toLocaleString('en-US');
@@ -376,7 +490,7 @@
       var authors = fstats.authors;
       if (!authors) {
         var set = {};
-        POEMS.forEach(function (p) { set[p.author] = 1; });
+        loadedPoems().forEach(function (p) { set[p.author] = 1; });
         authors = Object.keys(set).length;
       }
       statAuthors.textContent = authors.toLocaleString('en-US');
@@ -530,11 +644,17 @@
     var countEl = document.getElementById('result-count');
     if (!wrap) return;
 
-    var list = sortPoems(POEMS.filter(matchFilters));
+    var list = sortPoems(loadedPoems().filter(matchFilters));
     if (countEl) {
-      countEl.textContent = state.textHits
+      var txt = state.textHits
         ? '正文搜索命中 ' + list.length.toLocaleString('en-US') + ' 首'
         : '共 ' + list.length.toLocaleString('en-US') + ' 首符合条件';
+      var total = IDX_META.total || 0;
+      var loaded = IndexStore.loadedCount();
+      if (loaded < total) {
+        txt += ' · 已载入 ' + loaded.toLocaleString('en-US') + '/' + total.toLocaleString('en-US') + ' 首，其余后台载入中…';
+      }
+      countEl.textContent = txt;
     }
 
     var pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
@@ -548,7 +668,7 @@
         wrap.innerHTML =
           '<div class="empty-state">标题 / 作者 / 首行中没有「' + esc(state.keyword) + '」' +
           '<br /><button class="btn btn--ghost" id="fulltext-scan-btn" style="margin-top:14px;">在全部 ' +
-          POEMS.length.toLocaleString('en-US') + ' 首的正文里搜（会分批下载正文数据）</button></div>';
+          (IDX_META.total || 0).toLocaleString('en-US') + ' 首的正文里搜（会分批下载正文数据）</button></div>';
         var scanBtn = document.getElementById('fulltext-scan-btn');
         if (scanBtn) {
           scanBtn.addEventListener('click', function () { scanFullText(state.keyword); });
@@ -595,7 +715,7 @@
     var textEl = document.getElementById('library-progress-text');
     var fillEl = document.getElementById('library-progress-fill');
     if (!textEl) return;
-    var total = POEMS.length || 1;
+    var total = IDX_META.total || 1;
     var pct = Math.min(100, Math.round((learnedIds.length / total) * 1000) / 10);
     textEl.textContent = '我的进度 · 已学 ' + learnedIds.length + ' 首 · 收藏 ' + favIds.length + ' 首';
     if (fillEl) fillEl.style.width = Math.max(pct, learnedIds.length ? 1 : 0) + '%';
@@ -625,6 +745,13 @@
 
     renderPoems();
     updateLibraryProgress();
+
+    /* 后台补齐剩余索引分片：每到位一片就重渲染，搜索结果渐进变全 */
+    window.__refreshLibrary = function () {
+      renderPoems();
+      updateLibraryProgress();
+    };
+    IndexStore.ensureAll(function () { window.__refreshLibrary(); });
 
     var input = document.getElementById('library-search');
     if (input) {
@@ -685,6 +812,63 @@
     return r;
   }
 
+  /* ---------- 评论：云端优先，本地兜底 ---------- */
+  var CKEY = 'shici_comments';
+  function localComments(postId) {
+    var all = store(CKEY, {});
+    return all[postId] || [];
+  }
+  function addLocalComment(postId, c) {
+    var all = store(CKEY, {});
+    if (!all[postId]) all[postId] = [];
+    all[postId].push(c);
+    saveStore(CKEY, all);
+  }
+
+  /* 云端帖子 → 统一结构（本地帖子用 ts，云端用 created_at） */
+  function normalizeCloudPost(r) {
+    return {
+      id: r.id,
+      kind: r.kind || 'original',
+      title: r.title,
+      text: r.body || '',
+      poemId: (r.poem_id === null || r.poem_id === undefined) ? null : r.poem_id,
+      author: r.author,
+      ts: new Date(r.created_at).getTime(),
+      status: r.status || 'approved',
+      likes: r.likes || 0,
+      cloud: true
+    };
+  }
+
+  /* 合并信息流：云端（人人可见）+ 本地种子/本机发布 */
+  function loadFeed(cb) {
+    var local = getPosts().filter(function (p) {
+      return p.status === 'approved' || p.author === CURRENT_USER;
+    });
+    var seeds = SEED_POSTS;
+    if (window.Cloud && window.Cloud.ready) {
+      window.Cloud.posts.list(function (rows) {
+        var cloud = (rows || []).map(normalizeCloudPost);
+        var seen = {};
+        var all = cloud.concat(local, seeds).filter(function (p) {
+          if (!p || seen[p.id]) return false;
+          seen[p.id] = 1;
+          return true;
+        }).sort(function (a, b) { return b.ts - a.ts; });
+        cb(all);
+      });
+    } else {
+      var seen2 = {};
+      var all2 = local.concat(seeds).filter(function (p) {
+        if (!p || seen2[p.id]) return false;
+        seen2[p.id] = 1;
+        return true;
+      }).sort(function (a, b) { return b.ts - a.ts; });
+      cb(all2);
+    }
+  }
+
   function postBody(p) {
     if (p.kind === 'classic' && p.poemId !== null && p.poemId !== undefined) {
       var poem = findPoem(p.poemId);
@@ -719,9 +903,89 @@
       '<span class="who">' + esc(p.author) + ' · ' + when + '</span>' + classicTag + statusBadge + '</div>' +
       '<h3 class="post-title">' + esc(p.title) + '</h3>' +
       '<p class="poem-body">' + postBody(p) + '</p>' +
-      '<div class="post-foot"><button data-like="' + p.likes + '">赞 ' + p.likes + '</button></div>' +
+      '<div class="post-foot">' +
+      '<button data-like="' + p.likes + '">赞 ' + p.likes + '</button>' +
+      '<button data-comments-toggle="' + esc(p.id) + '">评论</button>' +
+      '</div>' +
+      '<div class="comment-area" data-comments="' + esc(p.id) + '" hidden></div>' +
       '</article>'
     );
+  }
+
+  /* ---------- 评论区渲染 ---------- */
+  function commentItem(c) {
+    var d = new Date(c.ts || c.created_at);
+    var when = (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+      ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return (
+      '<div class="comment-item" data-comment="' + esc(c.id) + '">' +
+      '<span class="avatar avatar--xs">' + esc((c.author || '诗')[0]) + '</span>' +
+      '<div class="comment-main">' +
+      '<span class="comment-who">' + esc(c.author) + ' · ' + when + '</span>' +
+      '<p class="comment-body">' + esc(c.body).replace(/\n/g, '<br />') + '</p>' +
+      '</div></div>'
+    );
+  }
+
+  function renderComments(box, postId) {
+    box.hidden = false;
+    box.innerHTML = '<div class="comment-loading">评论载入中…</div>';
+    function paint(list) {
+      var mine = localComments(postId);
+      var all = (list || []).map(function (r) {
+        return { id: r.id, author: r.author, body: r.body, ts: new Date(r.created_at).getTime() };
+      }).concat(mine);
+      var html = all.length
+        ? '<div class="comment-list">' + all.map(commentItem).join('') + '</div>'
+        : '<div class="comment-empty">还没有人评论，来说两句</div>';
+      var needLogin = window.Cloud && window.Cloud.ready && !Auth.current();
+      html += needLogin
+        ? '<div class="comment-form-locked">登录后即可发表评论 · <a href="auth.html">去登录</a></div>'
+        : '<form class="comment-form" data-comment-form="' + esc(postId) + '">' +
+          '<input class="comment-input" type="text" maxlength="200" placeholder="写下你的感受…" />' +
+          '<button type="submit" class="btn btn--primary btn--sm">发送</button></form>';
+      box.innerHTML = html;
+
+      var form = box.querySelector('[data-comment-form]');
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var input = form.querySelector('.comment-input');
+          var body = (input.value || '').trim();
+          if (!body) return;
+          input.value = '';
+          var who = Auth.current() || CURRENT_USER;
+          if (window.Cloud && window.Cloud.ready) {
+            window.Cloud.comments.create(postId, body, function (row) {
+              if (!row) {
+                addLocalComment(postId, { id: 'c' + Date.now(), author: who, body: body, ts: Date.now() });
+              }
+              renderComments(box, postId);
+            });
+          } else {
+            addLocalComment(postId, { id: 'c' + Date.now(), author: who, body: body, ts: Date.now() });
+            renderComments(box, postId);
+          }
+        });
+      }
+    }
+    if (window.Cloud && window.Cloud.ready) {
+      window.Cloud.comments.list(postId, function (rows) { paint(rows || []); });
+    } else {
+      paint([]);
+    }
+  }
+
+  function bindCommentToggles(root) {
+    root.querySelectorAll('[data-comments-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-comments-toggle');
+        var box = root.querySelector('[data-comments="' + id + '"]');
+        if (!box) return;
+        if (!box.hidden) { box.hidden = true; box.innerHTML = ''; return; }
+        renderComments(box, id);
+      });
+    });
   }
 
   function bindLike(btn) {
@@ -742,20 +1006,15 @@
   function renderFeed() {
     var list = document.getElementById('post-list');
     if (!list) return;
-    var stored = getPosts();
-    /* 信息流：种子 + 已通过 + 自己的（任何状态都自己可见） */
-    var visible = stored.filter(function (p) {
-      return p.status === 'approved' || p.author === CURRENT_USER;
+    list.innerHTML = '<div class="empty-state">正在载入诗友分享…</div>';
+    /* 云端模式：所有访客（含未登录）都能看到全站已通过的分享 */
+    loadFeed(function (all) {
+      list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
+        '<div class="empty-state">还没有作品，来写第一首吧</div>';
+      list.querySelectorAll('[data-like]').forEach(bindLike);
+      bindCommentToggles(list);
+      fillClassicBodies(list);
     });
-    var all = visible.sort(function (a, b) { return b.ts - a.ts; }).concat(
-      SEED_POSTS.filter(function (s) {
-        return !visible.some(function (v) { return v.id === s.id; });
-      })
-    );
-    list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
-      '<div class="empty-state">还没有作品，来写第一首吧</div>';
-    list.querySelectorAll('[data-like]').forEach(bindLike);
-    fillClassicBodies(list);
   }
 
   function renderModeration() {
@@ -866,8 +1125,9 @@
           return;
         }
         var hits = [];
-        for (var i = 0; i < POEMS.length && hits.length < 8; i++) {
-          var p = POEMS[i];
+        var _pool = loadedPoems();
+        for (var i = 0; i < _pool.length && hits.length < 8; i++) {
+          var p = _pool[i];
           if (p.title.indexOf(kw) !== -1 || p.author.indexOf(kw) !== -1) hits.push(p);
         }
         searchResults.innerHTML = hits.length
@@ -900,7 +1160,6 @@
           setTimeout(function () { location.href = 'auth.html'; }, 800);
           return;
         }
-        var posts = getPosts();
         var base = {
           id: 'p' + Date.now(),
           author: CURRENT_USER,
@@ -908,18 +1167,19 @@
           status: 'pending',
           likes: 0
         };
+        var draft = null;
         if (mode === 'classic') {
           if (!picked) {
             if (searchInput) searchInput.focus();
             return;
           }
           var note = (document.getElementById('classic-note') || {}).value || '';
-          posts.push(Object.assign(base, {
+          draft = Object.assign(base, {
             kind: 'classic',
             title: picked.title + ' · ' + picked.author,
             text: note.trim(),
             poemId: picked.id
-          }));
+          });
         } else {
           var titleInput = document.getElementById('compose-title');
           var bodyInput = document.getElementById('compose-body');
@@ -928,14 +1188,28 @@
             if (bodyInput) bodyInput.focus();
             return;
           }
-          posts.push(Object.assign(base, {
+          draft = Object.assign(base, {
             kind: 'original',
             title: (titleInput && titleInput.value.trim()) || '无题',
             text: body,
             poemId: null
-          }));
+          });
         }
-        setPosts(posts);
+        /* 云端模式：直接写库（RLS 只允许写自己的），所有人立即可见 */
+        if (window.Cloud && window.Cloud.ready) {
+          window.Cloud.posts.create(draft, function (row) {
+            if (!row) {
+              var fallback = getPosts();
+              fallback.push(draft);
+              setPosts(fallback);
+            }
+            renderFeed();
+          });
+        } else {
+          var posts = getPosts();
+          posts.push(draft);
+          setPosts(posts);
+        }
         if (card) card.hidden = true;
         ['compose-title', 'compose-body', 'classic-note', 'classic-search'].forEach(function (id) {
           var el = document.getElementById(id);
@@ -1038,10 +1312,21 @@
     var params = new URLSearchParams(location.search);
     var id = parseInt(params.get('id'), 10);
     var poem = findPoem(id);
-    if (!poem) {
-      poem = findByTitleAuthor('登高', '杜甫') || POEMS[0];
+    if (!poem && id >= 0) {
+      /* 索引分片尚未载入：先下载该片再渲染，保证深链接可达全库任意一首 */
+      titleEl.textContent = '载入中…';
+      IndexStore.poem(id, function (p2) {
+        initStudyWith(p2 || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+      });
+      return;
     }
-    if (!poem) return;
+    if (!poem) poem = findByTitleAuthor('登高', '杜甫') || loadedPoems()[0];
+    initStudyWith(poem);
+  }
+
+  function initStudyWith(poem) {
+    var titleEl = document.getElementById('study-title');
+    if (!poem || !titleEl) return;
 
     /* 头部：索引数据，立即渲染 */
     titleEl.textContent = poem.title;
@@ -1129,7 +1414,7 @@
     /* 同题材推荐（可点击，索引数据即可） */
     var relEl = document.getElementById('related-list');
     if (relEl) {
-      var same = POEMS.filter(function (p) {
+      var same = loadedPoems().filter(function (p) {
         return p.id !== poem.id && p.themes[0] === poem.themes[0] && p.line.length <= 30;
       });
       var picks = seededPick(same, poem.id * 31 + 7, 3);
@@ -1147,7 +1432,7 @@
     var poetEl = document.getElementById('poet-card-body');
     if (poetEl) {
       var count = 0;
-      POEMS.forEach(function (p) { if (p.author === poem.author) count++; });
+      loadedPoems().forEach(function (p) { if (p.author === poem.author) count++; });
       poetEl.innerHTML =
         '<div class="poet-name serif">' + esc(poem.author) + '</div>' +
         '<div class="poet-dynasty">' + esc(poem.dynasty) + '代 · 库中收录 ' + count + ' 首</div>';
@@ -1659,9 +1944,28 @@
     initAuthForm();
     initAuthUI();
     initHome();
-    initLibrary();
-    initCommunity();
-    initStudy();
-    initChallenge();
+
+    /* 云端会话恢复：SDK 就绪后若发现已登录会话，补画顶栏与信息流 */
+    if (window.Cloud && window.Cloud.ready) {
+      window.Cloud.auth.onChange(function () {
+        initAuthUI();
+        renderFeed();
+      });
+    }
+
+    /* 需要索引的页面：先载入第 0 片（1.7MB）立即出内容，再初始化 */
+    var needsIndex =
+      document.getElementById('poem-list') ||
+      document.getElementById('study-title') ||
+      document.getElementById('post-list');
+
+    function booted() {
+      initLibrary();
+      initCommunity();
+      initStudy();
+      initChallenge();
+    }
+    if (needsIndex) IndexStore.boot(booted);
+    else booted();
   });
 })();
