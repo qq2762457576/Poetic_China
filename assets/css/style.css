@@ -34,8 +34,10 @@
   --container: 1440px;
   --tabbar-h: 62px;
   /* 全面屏安全区：iPhone 底部横条 / 圆角。graceful fallback 到 0 */
+  /* 桌面顶栏高 76；移动端 56 + 安全区，sticky 的 top 要跟得上，否则导航条会被顶栏压住 */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  --header-h: calc(76px + var(--safe-top));
 }
 
 *,
@@ -1681,4 +1683,166 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   .me-guest-card .btn { width: 100%; }
   .me-account-row { flex-wrap: wrap; }
   .page-body--me .section-title { font-size: 16px; }
+}
+
+
+/* ============ 2026-09-10j 课堂六步学习流程（PRD 第十七条） ============ */
+
+/* --- 六步导航条 --- */
+.study-steps {
+  position: sticky; top: var(--header-h, 76px); z-index: 20;
+  background: var(--paper, #faf7f1);
+  padding: 14px 0 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft, #e8e2d8);
+}
+.study-steps-list {
+  display: flex; align-items: center; gap: 6px;
+  list-style: none; margin: 0 0 10px; padding: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.study-steps-list::-webkit-scrollbar { display: none; }
+.study-step-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px 7px 7px;
+  border-radius: 999px;
+  font-size: 13px; color: var(--ink-400, #9a938a);
+  cursor: pointer; white-space: nowrap; flex: none;
+  transition: background .2s ease, color .2s ease;
+}
+.study-step-item:hover { background: var(--sand, #f1ebe0); color: var(--ink-700, #4a453d); }
+.study-step-idx {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  background: var(--line, #ded7c9); color: var(--ink-500, #7a746a);
+  transition: background .2s ease, color .2s ease;
+}
+.study-step-item.is-done .study-step-idx {
+  background: var(--sand, #f1ebe0); color: var(--cinnabar, #9c3b2e);
+}
+.study-step-item.is-current { color: var(--ink-900, #221e1a); font-weight: 600; }
+.study-step-item.is-current .study-step-idx {
+  background: var(--cinnabar, #9c3b2e); color: #fff;
+}
+.study-steps-bar {
+  height: 3px; border-radius: 2px; overflow: hidden;
+  background: var(--line, #ded7c9);
+}
+.study-steps-fill {
+  display: block; height: 100%; width: 0;
+  background: var(--cinnabar, #9c3b2e);
+  transition: width .3s ease;
+}
+.study-steps-count {
+  margin: 8px 0 0; font-size: 12px; letter-spacing: .04em;
+  color: var(--ink-400, #9a938a);
+}
+
+/* --- 每步的内容区 --- */
+.study-step { padding-top: 18px; }
+.study-step[hidden] { display: none; }
+.step-head { margin-bottom: 16px; }
+.step-title {
+  font-size: 20px; font-weight: 600; color: var(--ink-900, #221e1a);
+  margin: 0 0 6px;
+}
+.step-desc {
+  margin: 0; font-size: 14px; line-height: 1.75;
+  color: var(--ink-500, #7a746a);
+}
+
+/* --- 名句卡 --- */
+.famous-line {
+  font-size: 20px; line-height: 1.9; color: var(--ink-900, #221e1a);
+  margin: 0 0 6px; letter-spacing: .02em;
+}
+.famous-line + .famous-line { margin-top: 14px; }
+.famous-why {
+  margin: 0 0 14px; font-size: 14px; line-height: 1.75;
+  color: var(--ink-500, #7a746a);
+}
+
+/* --- 第四步：点选名句 --- */
+.pick-lines {
+  list-style: none; margin: 0 0 16px; padding: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.pick-line {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  padding: 10px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease;
+}
+.pick-line:hover { background: rgba(0, 0, 0, .035); }
+.pick-line-text { font-size: 18px; line-height: 1.85; color: var(--ink-800, #33302b); }
+/* 「赏析曾引用」只是提示，不是判定 —— 用很轻的底纹，不抢视觉 */
+.pick-line--hint { background: rgba(178, 58, 44, .045); }
+.pick-line-tag {
+  flex: none; font-size: 11px; letter-spacing: .04em;
+  color: var(--cinnabar, #b23a2c); opacity: .68; white-space: nowrap;
+}
+.pick-line.is-picked {
+  border-color: var(--cinnabar, #b23a2c);
+  background: rgba(178, 58, 44, .07);
+}
+.pick-line.is-picked .pick-line-text { color: var(--cinnabar, #b23a2c); font-weight: 600; }
+.pick-line:focus-visible {
+  outline: 2px solid var(--cinnabar, #b23a2c);
+  outline-offset: 2px;
+}
+.pick-hint {
+  margin: 0; font-size: 13px; line-height: 1.7; color: var(--ink-500, #7a746a);
+}
+.pick-note { margin-top: 16px; }
+
+@media (max-width: 768px) {
+  .pick-line { padding: 9px 10px; gap: 8px; }
+  .pick-line-text { font-size: 16px; }
+  .pick-line-tag { display: none; }
+}
+
+/* --- 背诵卡 --- */
+.recite-card {
+  border: 1px dashed var(--ink-200, #d8d2c8);
+  background: var(--paper, #faf7f1);
+  padding: 32px 36px; box-shadow: none;
+}
+.recite-text {
+  font-family: var(--font-serif);
+  font-size: 18px; line-height: 2; margin: 0 0 22px;
+  color: var(--ink-800, #33302b);
+}
+.recite-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* --- 步骤操作条 --- */
+.step-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 26px; padding-top: 20px;
+  border-top: 1px dashed var(--ink-200, #d8d2c8);
+}
+.step-nav-progress {
+  font-size: 13px; letter-spacing: .06em; color: var(--ink-400, #9a938a);
+}
+.step-nav .btn[disabled] { cursor: not-allowed; }
+
+/* --- 焦点样式（PRD 第二十八条） --- */
+.study-step-item:focus-visible {
+  outline: 2px solid var(--cinnabar, #9c3b2e);
+  outline-offset: 2px;
+}
+
+/* --- 响应式 --- */
+@media (max-width: 768px) {
+  .study-steps { top: calc(56px + var(--safe-top)); padding: 12px 0 8px; }
+  .study-step-name { display: none; }   /* 窄屏只留序号，省空间 */
+  .study-step-item { padding: 6px; }
+  .study-step-item.is-current .study-step-name {
+    display: inline;   /* 当前步仍显示名字 */
+  }
+  .recite-card { padding: 24px 20px; }
+  .recite-actions .btn { width: 100%; }
+  .step-nav { flex-wrap: wrap; }
+  .step-nav .btn { flex: 1; min-width: 120px; }
+  .step-nav-progress { order: -1; width: 100%; text-align: center; }
 }

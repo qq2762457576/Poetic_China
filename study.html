@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910i" data-page-node-id="gsZOVbzDykXh0WgFGpR49O" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910k" data-page-node-id="gsZOVbzDykXh0WgFGpR49O" />
 </head>
 <body data-page="class" data-page-node-id="hlGH8UQwNDcwqn7zF8AKuY">
 
@@ -109,32 +109,107 @@
           </div>
         </div>
 
-        <!-- 中央主区：正文 + 赏析（核心内容） -->
+        <!-- 中央主区：六步学习流程（PRD 第十七条） -->
         <div data-page-node-id="uuuRvZHTI23v7HqsfdYfQf">
-          <div class="tab-row" id="study-tabs" data-page-node-id="yrADnQuIWU3ymQdIK2v00u">
-            <span class="tab tab--active" data-study-tab="text" data-page-node-id="8BtCbdmRyOeJVBbU43sVr3">原文</span>
-            <span class="tab" data-study-tab="notes" data-page-node-id="I8Uh1z4jjlXbTc5qixyTBA">注释</span>
-            <span class="tab" data-study-tab="translation" data-page-node-id="iSeoGx6XwO2Fca7VR99Dz3">译文</span>
-          </div>
 
-          <div class="card" style="padding:28px 32px;" data-page-node-id="QZpKzgWBRVgE5kqHuKim9T">
-            <div data-study-panel="text" data-page-node-id="ldxjAG39FJHFJPckxqaJVH">
+          <!-- 六步导航条：进度 X/6 + 可点击跳步 -->
+          <nav class="study-steps" id="study-steps" aria-label="学习流程">
+            <ol class="study-steps-list" id="study-steps-list"></ol>
+            <div class="study-steps-bar" aria-hidden="true">
+              <span class="study-steps-fill" id="study-steps-fill"></span>
+            </div>
+            <p class="study-steps-count" id="study-steps-count">1 / 6</p>
+          </nav>
+
+          <!-- 第一步：读原文 -->
+          <section class="study-step" data-step="1">
+            <div class="step-head">
+              <h3 class="step-title">读原文</h3>
+              <p class="step-desc">先通读全篇，不必急着理解每个字。感受节奏与气息。</p>
+            </div>
+            <div class="card" style="padding:28px 32px;" data-page-node-id="QZpKzgWBRVgE5kqHuKim9T">
               <div class="verse-list" id="verse-list" data-page-node-id="5nx5EErC9I197Kmyvg1ZT0"></div>
             </div>
-            <div data-study-panel="notes" id="panel-notes" hidden data-page-node-id="Acp1J4K1H2IUGL4MAAaH3P"></div>
-            <div data-study-panel="translation" id="panel-translation" hidden data-page-node-id="vd8XJcIrIFni2WtqZDsp0G"></div>
-          </div>
+          </section>
 
-          <!-- 创作背景：仅有背景资料的篇目才显示（JS 控制 hidden） -->
-          <div class="card background-card" id="background-card" hidden data-page-node-id="BgCard0001xQ7nVbJ2cLgT6">
-            <h3 class="appreciation-title" data-page-node-id="BgTitle001wF5hN9tKbD2jXmQ">创作背景</h3>
-            <div id="panel-background" data-page-node-id="BgPanel001WmhkyQMj0n0pPv"></div>
-          </div>
+          <!-- 第二步：逐句理解 -->
+          <section class="study-step" data-step="2" hidden>
+            <div class="step-head">
+              <h3 class="step-title">逐句理解</h3>
+              <p class="step-desc">对照注释与译文，把每一句落到实处。</p>
+            </div>
+            <div class="tab-row" id="study-tabs" data-page-node-id="yrADnQuIWU3ymQdIK2v00u">
+              <span class="tab tab--active" data-study-tab="notes" data-page-node-id="I8Uh1z4jjlXbTc5qixyTBA">注释</span>
+              <span class="tab" data-study-tab="translation" data-page-node-id="iSeoGx6XwO2Fca7VR99Dz3">译文</span>
+            </div>
+            <div class="card" style="padding:28px 32px;">
+              <div data-study-panel="notes" id="panel-notes" data-page-node-id="Acp1J4K1H2IUGL4MAAaH3P"></div>
+              <div data-study-panel="translation" id="panel-translation" hidden data-page-node-id="vd8XJcIrIFni2WtqZDsp0G"></div>
+            </div>
+          </section>
 
-          <!-- 赏析：核心内容，主区常显大卡 -->
-          <div class="card appreciation-card" data-page-node-id="kR8mW3pYxQ7nVbJ2cLgT6s">
-            <h3 class="appreciation-title" data-page-node-id="wF5hN9tKbD2jXmQ8vRcUeA">赏析</h3>
-            <div id="panel-appreciation" data-page-node-id="WmhkyQMj0n0pPvuv8JiAtG"></div>
+          <!-- 第三步：了解背景 -->
+          <section class="study-step" data-step="3" hidden>
+            <div class="step-head">
+              <h3 class="step-title">了解背景</h3>
+              <p class="step-desc">知道诗人写这首诗时身在何处、心在何境，字句的分量会不一样。</p>
+            </div>
+            <div class="card background-card" id="background-card" data-page-node-id="BgCard0001xQ7nVbJ2cLgT6">
+              <div id="panel-background" data-page-node-id="BgPanel001WmhkyQMj0n0pPv"></div>
+            </div>
+          </section>
+
+          <!-- 第四步：挑出你的名句 -->
+          <section class="study-step" data-step="4" hidden>
+            <div class="step-head">
+              <h3 class="step-title">挑出你的名句</h3>
+              <p class="step-desc">读到这里，哪一句最打动你？点一下把它选出来。赏析中引用过的句子会有浅色标记，可作参考 —— 但选哪句由你定。</p>
+            </div>
+            <div class="card" style="padding:24px 28px;">
+              <ol class="pick-lines" id="pick-lines" aria-label="点选原文句子"></ol>
+              <p class="pick-hint" id="pick-hint">点一下句子即可选中；再点一次取消。</p>
+            </div>
+            <div class="card appreciation-card" id="famous-card">
+              <h3 class="appreciation-title">我选的名句</h3>
+              <div id="panel-famous"></div>
+            </div>
+          </section>
+
+          <!-- 第五步：整体赏析 -->
+          <section class="study-step" data-step="5" hidden>
+            <div class="step-head">
+              <h3 class="step-title">整体赏析</h3>
+              <p class="step-desc">合上细节，看全篇的谋篇与气象。</p>
+            </div>
+            <div class="card appreciation-card" data-page-node-id="kR8mW3pYxQ7nVbJ2cLgT6s">
+              <h3 class="appreciation-title" data-page-node-id="wF5hN9tKbD2jXmQ8vRcUeA">赏析</h3>
+              <div id="panel-appreciation" data-page-node-id="WmhkyQMj0n0pPvuv8JiAtG"></div>
+            </div>
+          </section>
+
+          <!-- 第六步：开始背诵 -->
+          <section class="study-step" data-step="6" hidden>
+            <div class="step-head">
+              <h3 class="step-title">开始背诵</h3>
+              <p class="step-desc">六步走完，去挑战里把这首诗真正变成自己的。</p>
+            </div>
+            <div class="card recite-card">
+              <div class="recite-body">
+                <p class="recite-text">「<span id="recite-title"></span>」已读完五步。<br>背一遍，用挑战验收。</p>
+                <div class="recite-actions">
+                  <a class="btn btn--primary" id="recite-go" href="challenge.html">开始背诵挑战</a>
+                  <button class="btn btn--ghost" id="recite-restart" type="button">回到第一步复习</button>
+                </div>
+                <p class="form-hint" id="recite-hint"></p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 步骤操作条：上一步 / 下一步 -->
+          <div class="step-nav" id="step-nav">
+            <button class="btn btn--ghost" id="step-prev" type="button">← 上一步</button>
+            <span class="step-nav-progress" id="step-nav-progress">1 / 6</span>
+            <button class="btn btn--primary" id="step-next" type="button">下一步 →</button>
           </div>
 
           <!-- 上一首 / 下一首 -->
@@ -205,10 +280,10 @@
   </nav>
 
   <script src="assets/data/site-stats.js?v=20260910a" defer></script>
-  <script src="assets/data/index-meta.js?v=20260910i" defer></script>
-  <script src="assets/data/notes.js?v=20260910i" defer></script>
-  <script src="assets/js/config.js?v=20260910i" defer></script>
-  <script src="assets/js/cloud.js?v=20260910i" defer></script>
-  <script src="assets/js/main.js?v=20260910i" defer></script>
+  <script src="assets/data/index-meta.js?v=20260910k" defer></script>
+  <script src="assets/data/notes.js?v=20260910k" defer></script>
+  <script src="assets/js/config.js?v=20260910k" defer></script>
+  <script src="assets/js/cloud.js?v=20260910k" defer></script>
+  <script src="assets/js/main.js?v=20260910k" defer></script>
 </body>
 </html>
