@@ -2240,25 +2240,46 @@
     var extra = lookupNotes(poem.title, poem.author);
     var lines = poem.text.split('\n');
 
-    /* 原文面板：逐句可点 */
+    /* 原文面板：逐句可点，并可就地标「名句」。
+     *
+     * 为什么第 1 步就能标：六步是线性引导，用户读原文时已经看到全篇、
+     * 心里那句「这写得好」是此刻冒出来的，却要一路点完前 3 步到第 4 步
+     * 才能标 —— 摩擦就在这。这里给每句加一个轻量星标就够了。
+     *
+     * ⚠️ 与第 4 步共用同一份存储（shici_picked_lines），
+     *    所以两边天然同步：这里标了，第 4 步「我的名句」面板立刻有。
+     *    仍是「用户自己点选」，系统不判定哪句是名句（PRD 第四十条）。 */
     var verseList = document.getElementById('verse-list');
     if (verseList) {
+      var pickedNow = loadPickedLines(poem.id);
       verseList.innerHTML = lines.map(function (ln, i) {
         var note = curated && curated.notes[i] ? curated.notes[i][1] : '';
+        var t = String(ln || '').trim();
+        var on = t && pickedNow.indexOf(t) !== -1;
         return (
-          '<div class="verse-row" data-verse="' + i + '">' +
+          '<div class="verse-row' + (on ? ' is-picked' : '') + '" data-verse="' + i + '"' +
+          (t ? ' data-verse-text="' + esc(t) + '"' : '') + '>' +
           '<span class="verse-text">' + esc(ln) + '</span>' +
           (note ? '<span class="verse-note">' + esc(note) + '</span>' : '') +
+          (t ? '<button class="verse-pick" type="button"' +
+            ' aria-pressed="' + (on ? 'true' : 'false') + '"' +
+            ' title="' + (on ? '取消标记' : '标为名句') + '"' +
+            ' aria-label="' + (on ? '取消标记这句为名句' : '把这句标为名句') + '">' +
+            '<span aria-hidden="true">' + (on ? '★' : '☆') + '</span></button>' : '') +
           '</div>'
         );
       }).join('');
       verseList.querySelectorAll('[data-verse]').forEach(function (row) {
-        row.addEventListener('click', function () {
+        row.addEventListener('click', function (e) {
+          /* 点星标 → 切换名句标记；点其余部分 → 高亮该句（原有行为） */
+          if (e.target.closest('.verse-pick')) return;
           verseList.querySelectorAll('[data-verse]').forEach(function (r) {
             r.classList.toggle('is-active', r === row);
           });
         });
       });
+      bindVersePick(verseList, poem);
+      renderVersePickHint(verseList, poem);
     }
 
     /* 注释面板 */
@@ -2368,6 +2389,102 @@
       e.preventDefault();
       toggle(li);
     });
+  }
+
+  /* 第 1 步「读原文」里的就地标注。
+   * 与第 4 步 bindPickLines 共用 loadPickedLines / savePickedLines，
+   * 因此两处选择天然一致 —— 不再重复实现一份，避免两套逻辑日后走偏。 */
+  function bindVersePick(verseList, poem) {
+    function togglePick(row) {
+      var text = row.getAttribute('data-verse-text');
+      if (!text) return;
+      var picked = loadPickedLines(poem.id);
+      var idx = picked.indexOf(text);
+      var nowOn;
+      if (idx === -1) {
+        picked.push(text);
+        nowOn = true;
+      } else {
+        picked.splice(idx, 1);
+        nowOn = false;
+      }
+      /* 上限 3 句，与第 4 步一致：多了不叫「名句」。
+       * 用与第 4 步相同的写法（保留末尾 = 最新的 3 句），
+       * 两处规则必须同源，否则同一次点击在两步得到的结果会不一样。 */
+      var dropped = null;
+      if (picked.length > 3) {
+        var kept = picked.slice(-3);
+        dropped = picked.slice(0, picked.length - 3).join('、');
+        picked = kept;
+      }
+      savePickedLines(poem.id, picked);
+      syncVersePickUI(verseList, poem);
+
+      /* 第 4 步的名句面板若已在 DOM 里，一并刷新（两个面板同源，必须同步） */
+      var famousPanel = document.getElementById('panel-famous');
+      if (famousPanel) renderPickedFamous(famousPanel, poem);
+      var pickList = document.getElementById('pick-lines');
+      if (pickList) {
+        Array.prototype.forEach.call(pickList.querySelectorAll('[data-pick-line]'), function (li) {
+          var on = picked.indexOf(li.getAttribute('data-line-text')) !== -1;
+          li.classList.toggle('is-picked', on);
+          li.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
+      /* 挤掉旧句时如实说明，不让用户困惑「我刚才点的那句去哪了」 */
+      if (dropped) {
+        announceVersePick('已标 3 句（上限）。最早标记的「' + dropped + '」已移出。');
+      } else {
+        announceVersePick((nowOn ? '已标为名句：' : '已取消标记：') + text);
+      }
+    }
+    verseList.addEventListener('click', function (e) {
+      var btn = e.target.closest('.verse-pick');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var row = btn.closest('[data-verse]');
+      if (row) togglePick(row);
+    });
+  }
+
+  /* 把存储状态刷到第 1 步的星标上（含计数提示） */
+  function syncVersePickUI(verseList, poem) {
+    var picked = loadPickedLines(poem.id);
+    Array.prototype.forEach.call(verseList.querySelectorAll('[data-verse]'), function (row) {
+      var t = row.getAttribute('data-verse-text');
+      var on = !!t && picked.indexOf(t) !== -1;
+      row.classList.toggle('is-picked', on);
+      var btn = row.querySelector('.verse-pick');
+      if (btn) {
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.setAttribute('title', on ? '取消标记' : '标为名句');
+        btn.setAttribute('aria-label', on ? '取消标记这句为名句' : '把这句标为名句');
+        var inner = btn.querySelector('[aria-hidden="true"]');
+        if (inner) inner.textContent = on ? '★' : '☆';
+      }
+    });
+    renderVersePickHint(verseList, poem);
+  }
+
+  /* 第 1 步的计数与说明。没有选择时给一句「怎么用」，不给数字 0 干瞪眼。
+   * ⚠️ 只说做得到的事：名句目前只在课堂页第 4 步与这里展示，
+   *    「我的」页没有这个区块，不要写成「我的页也会显示」（PRD 第四十条）。 */
+  function renderVersePickHint(verseList, poem) {
+    var hint = document.getElementById('verse-pick-hint');
+    if (!hint) return;
+    var picked = loadPickedLines(poem.id);
+    hint.textContent = picked.length
+      ? '已标记 ' + picked.length + ' / 3 句名句 · 第 4 步「理解名句」会一并列出'
+      : '读到喜欢的句子，点右侧 ☆ 标为你的名句（最多 3 句）';
+  }
+
+  /* 读屏播报：星标是图标按钮，视觉变化需要一句文字说明 */
+  function announceVersePick(msg) {
+    var live = document.getElementById('verse-pick-live');
+    if (!live) return;
+    live.textContent = msg;
   }
 
   var PICKED_KEY = 'shici_picked_lines';

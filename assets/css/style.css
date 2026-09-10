@@ -977,6 +977,10 @@ body[data-page="auth"] .tabbar { display: none; }
   flex-direction: column;
   gap: 8px;
   transition: background .2s ease;
+  /* 星标按钮绝对定位到右侧，故这里作为定位参照 */
+  position: relative;
+  /* 给星标留出位置，长句换行时不会压到按钮 */
+  padding-right: 48px;
 }
 .verse-row:hover { background: var(--sand); }
 .verse-row.is-active { background: var(--sand); }
@@ -994,6 +998,69 @@ body[data-page="auth"] .tabbar { display: none; }
   display: none;
 }
 .verse-row.is-active .verse-note { display: block; }
+
+/* ---------- 第 1 步「读原文」的就地名句标记 ----------
+ * 星标是图标按钮，视觉上要轻 —— 它是个随手动作，不该抢原文的注意力。
+ * 未标记时是空心灰星（几乎是背景的一部分），标记后变朱红实心，
+ * 同时句子左侧出现一条朱红竖线，形成「一眼扫过去能看出标了哪几句」。 */
+.verse-pick {
+  position: absolute;
+  right: 8px;
+  top: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  color: #cdbfa8;                 /* 未标记：淡到接近背景，不干扰阅读 */
+  transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+.verse-row:hover .verse-pick { color: #a8987c; }
+.verse-pick:hover { background: rgba(178, 58, 44, .08); color: var(--cinnabar, #b23a2c); }
+.verse-pick[aria-pressed="true"] {
+  color: var(--cinnabar, #b23a2c);
+  text-shadow: 0 0 1px rgba(178, 58, 44, .35);
+}
+.verse-pick:active { transform: scale(.9); }
+/* 键盘可达：鼠标点击不显示焦点环，Tab 导航必须显示（PRD 第二十八条） */
+.verse-pick:focus-visible {
+  outline: 2px solid var(--cinnabar, #b23a2c);
+  outline-offset: 2px;
+}
+/* 已标记的句子：左侧朱红竖线 + 句色加深 */
+.verse-row.is-picked { background: rgba(178, 58, 44, .035); }
+.verse-row.is-picked::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--cinnabar, #b23a2c);
+}
+.verse-row.is-picked .verse-text { color: var(--cinnabar, #b23a2c); }
+.verse-pick-hint {
+  margin: 16px 2px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-500, #6b6355);
+}
+@media (prefers-reduced-motion: reduce) {
+  .verse-pick { transition: none; }
+  .verse-pick:active { transform: none; }
+}
+@media (max-width: 768px) {
+  /* 窄屏：星标缩小，右内边距同步收窄，避免原文可用宽度被吃掉 */
+  .verse-row { padding-right: 40px; }
+  .verse-pick { width: 28px; height: 28px; right: 6px; top: 15px; font-size: 16px; }
+}
 
 .note-list { display: flex; flex-direction: column; gap: 14px; }
 .note-item { display: flex; flex-direction: column; gap: 6px; }
