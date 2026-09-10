@@ -1062,6 +1062,121 @@ body[data-page="auth"] .tabbar { display: none; }
   .verse-pick { width: 28px; height: 28px; right: 6px; top: 15px; font-size: 16px; }
 }
 
+/* ---------- 精编专题（课堂页入口） ---------- */
+.topics-section { padding: 8px 0 32px; }
+.topics-head { margin-bottom: 20px; }
+.topics-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0 0 8px;
+  letter-spacing: 1px;
+}
+.topics-desc { font-size: 14px; line-height: 1.8; color: var(--ink-500); margin: 0; }
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.topic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 20px 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.topic-card:hover {
+  border-color: var(--ink-300);
+  box-shadow: 0 4px 16px rgba(60, 50, 40, 0.07);
+  transform: translateY(-1px);
+}
+.topic-card:focus-visible {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: 2px;
+}
+.topic-card-name {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: 0.5px;
+}
+.topic-card-from { font-size: 12px; color: var(--ink-400); }
+/* 口径行：说清这 20 首是怎么来的（PRD 第四十条） */
+.topic-card-basis { font-size: 12px; line-height: 1.7; color: var(--ink-300); }
+.topic-card-count {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--cinnabar);
+  font-weight: 500;
+}
+
+.topic-detail { padding: 8px 0 40px; }
+.topic-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.topic-detail-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0 0 8px;
+  letter-spacing: 1px;
+}
+.topic-detail-meta { font-size: 13px; line-height: 1.8; color: var(--ink-400); margin: 0; }
+.topic-detail-source { font-size: 13px; color: var(--ink-400); margin: 18px 0 0; }
+.topic-detail-source a { color: var(--cinnabar); }
+
+.topic-poem-list { list-style: none; margin: 0; padding: 0; }
+.topic-poem-item { border-bottom: 1px solid var(--line-soft); }
+.topic-poem-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 8px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.topic-poem-link:hover { background: var(--sand); }
+.topic-poem-link:focus-visible {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: -2px;
+}
+.topic-poem-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--ink-900);
+}
+.topic-poem-author { font-size: 13px; color: var(--ink-400); white-space: nowrap; }
+
+.btn--sm { padding: 6px 12px; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .topic-card { transition: none; }
+  .topic-card:hover { transform: none; }
+}
+@media (max-width: 768px) {
+  .topics-title { font-size: 22px; }
+  .topic-grid { grid-template-columns: 1fr; gap: 12px; }
+  .topic-card { padding: 17px 18px; }
+  .topic-detail-head { flex-direction: column; gap: 12px; }
+  /* 窄屏诗句行：标题与作者改为上下排，避免长标题被挤压换行错乱 */
+  .topic-poem-link { flex-direction: column; align-items: flex-start; gap: 4px; padding: 13px 4px; }
+}
+
 .note-list { display: flex; flex-direction: column; gap: 14px; }
 .note-item { display: flex; flex-direction: column; gap: 6px; }
 .note-item dt { font-family: var(--font-serif); font-size: 17px; color: var(--ink-900); }

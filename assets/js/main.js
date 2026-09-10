@@ -1926,12 +1926,162 @@
     return null;
   }
 
+  /* ---------- 7a. 精编专题（课堂页入口，PRD Phase 2） ----------
+   * 数据来自 assets/data/topics.js（build_topics.js 生成）。
+   * 只做三件事：列专题卡 / 点开看诗单 / 点诗进课堂。
+   * ⚠️ 不在前端做任何二次筛选或排序 —— 口径由构建脚本固化，
+   *    前端再算一遍就会出现「卡上写 24 首、点进去 22 首」的不一致。 */
+
+  /* 专题内诗单：点诗进课堂。诗的 id 不在 topics.js 里，需回索引查。
+   * 索引分片可能未载入 → 走 IndexStore.ensureAll 补齐后再定位。 */
+  var _topicIndex = null;
+  function topicFindPoem(title, author) {
+    if (!_topicIndex) {
+      _topicIndex = [];
+      var meta = window.POEM_INDEX_META || {};
+      for (var c = 0; c < (meta.chunks || 0); c++) {
+        var arr = window['POEM_INDEX_' + c];
+        if (arr) _topicIndex = _topicIndex.concat(arr);
+      }
+    }
+    var i, r;
+    for (i = 0; i < _topicIndex.length; i++) {
+      r = _topicIndex[i];
+      if (r[0] === title && r[1] === author) return i;
+    }
+    /* 作者署名可能有差异（如「佚名」vs「汉乐府」）：退到标题全等 */
+    for (i = 0; i < _topicIndex.length; i++) {
+      if (_topicIndex[i][0] === title) return i;
+    }
+    return -1;
+  }
+
+  function renderTopics() {
+    var section = document.getElementById('topics-section');
+    var grid = document.getElementById('topic-grid');
+    if (!section || !grid) return false;
+    var topics = window.STUDY_TOPICS;
+    if (!topics || !topics.length) return false;
+
+    section.hidden = false;
+    grid.innerHTML = topics.map(function (t, idx) {
+      return '<button class="topic-card" type="button" data-topic="' + idx + '">' +
+        '<span class="topic-card-name">' + esc(t.name) + '</span>' +
+        (t.from ? '<span class="topic-card-from">' + esc(t.from) + '</span>' : '') +
+        '<span class="topic-card-basis">' + esc(t.basis) + '</span>' +
+        '<span class="topic-card-count">' + t.picked + ' 首</span>' +
+        '</button>';
+    }).join('');
+
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('[data-topic]');
+      if (!card) return;
+      var t = topics[parseInt(card.getAttribute('data-topic'), 10)];
+      if (t) openTopic(t);
+    });
+    return true;
+  }
+
+  function openTopic(t) {
+    var cards = document.getElementById('topics-section');
+    var detail = document.getElementById('topic-detail');
+    if (!cards || !detail) return;
+    cards.hidden = true;
+    detail.hidden = false;
+
+    var titleEl = document.getElementById('topic-detail-title');
+    var metaEl = document.getElementById('topic-detail-meta');
+    var listEl = document.getElementById('topic-poem-list');
+    if (titleEl) titleEl.textContent = t.name;
+    if (metaEl) {
+      /* ⚠️ 口径全写在脸上：这个专题从多少首里选、依据是什么、题名出处。
+       * 数字全部来自 topics.js（构建期固化），前端不重算、不美化。 */
+      var parts = [];
+      parts.push(t.basis);
+      parts.push('候选池共 ' + t.poolTotal.toLocaleString('en-US') + ' 首，本专题收 ' + t.picked + ' 首');
+      parts.push('入选篇目均有译文与赏析');
+      if (t.from) parts.push('题名出自 ' + t.from);
+      metaEl.textContent = parts.join(' · ');
+    }
+
+    if (listEl) {
+      listEl.innerHTML = t.items.map(function (it) {
+        /* 用 title+author 寻址（与错题本同一套入口），无需先知道 id */
+        var href = 'study.html?title=' + encodeURIComponent(it.t) +
+          '&author=' + encodeURIComponent(it.a);
+        return '<li class="topic-poem-item">' +
+          '<a class="topic-poem-link" href="' + href + '">' +
+          '<span class="topic-poem-title">' + esc(it.t) + '</span>' +
+          '<span class="topic-poem-author">' + esc(it.a) + ' · ' + esc(it.d) + '</span>' +
+          '</a></li>';
+      }).join('');
+    }
+
+    /* 题名出处的原诗：可点回原文。查不到就不显示这一行（宁缺不假） */
+    if (t.fromId != null && t.fromTitle) {
+      var more = document.createElement('p');
+      more.className = 'topic-detail-source';
+      more.innerHTML = '题名出自 <a href="study.html?id=' + t.fromId + '">' +
+        esc(t.fromTitle) + '</a>';
+      listEl.parentNode.insertBefore(more, listEl.nextSibling);
+    }
+
+    var main = document.getElementById('study-body');
+    if (main) main.hidden = true;
+    var head = document.getElementById('study-head-actions');
+    if (head) head.hidden = true;
+    var tEl = document.getElementById('study-title');
+    if (tEl) tEl.textContent = t.name;
+    var sEl = document.getElementById('study-subtitle');
+    if (sEl) sEl.textContent = '精编专题';
+    window.scrollTo(0, 0);
+  }
+
+  function bindTopicBack() {
+    var back = document.getElementById('topic-back');
+    if (!back) return;
+    back.addEventListener('click', function () {
+      var cards = document.getElementById('topics-section');
+      var detail = document.getElementById('topic-detail');
+      if (cards) cards.hidden = false;
+      if (detail) detail.hidden = true;
+
+      var main = document.getElementById('study-body');
+      if (main) main.hidden = true;
+      var head = document.getElementById('study-head-actions');
+      if (head) head.hidden = true;
+      var tEl = document.getElementById('study-title');
+      if (tEl) tEl.textContent = '诗词课堂';
+      var sEl = document.getElementById('study-subtitle');
+      if (sEl) sEl.textContent = '';
+      window.scrollTo(0, 0);
+    });
+  }
+
   function initStudy() {
     var titleEl = document.getElementById('study-title');
     if (!titleEl) return;
 
     var params = new URLSearchParams(location.search);
     var id = parseInt(params.get('id'), 10);
+    var hasPoemParam = params.has('id') || params.has('title');
+
+    /* 无诗参数 = 专题入口页：显示专题网格，隐藏六步流程 */
+    if (!hasPoemParam) {
+      if (renderTopics()) {
+        bindTopicBack();
+        titleEl.textContent = '诗词课堂';
+        var sub = document.getElementById('study-subtitle');
+        if (sub) sub.textContent = '读原文 · 逐句理解 · 了解背景 · 理解名句 · 整体赏析 · 开始背诵';
+        var body = document.getElementById('study-body');
+        if (body) body.hidden = true;
+        var headActions = document.getElementById('study-head-actions');
+        if (headActions) headActions.hidden = true;
+        return;
+      }
+      /* topics.js 没加载出来：如实降级到默认诗，不显示空专题区 */
+    }
+
     var poem = findPoem(id);
     if (!poem && id >= 0) {
       /* 索引分片尚未载入：先下载该片再渲染，保证深链接可达全库任意一首 */

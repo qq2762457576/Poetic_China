@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910p" data-page-node-id="gsZOVbzDykXh0WgFGpR49O" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910q" data-page-node-id="gsZOVbzDykXh0WgFGpR49O" />
 </head>
 <body data-page="class" data-page-node-id="hlGH8UQwNDcwqn7zF8AKuY">
 
@@ -45,14 +45,35 @@
             <h1 class="page-title" id="study-title" data-page-node-id="DwqE5IYNswOmIKvhXeKBh7">载入中…</h1>
             <p class="page-subtitle" id="study-subtitle" data-page-node-id="FKYrXaBdJ47h1DHNa2kod8"></p>
           </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;" data-page-node-id="97GHl33FdBuIHCKPbZay1t">
+          <div id="study-head-actions" style="display:flex;gap:12px;flex-wrap:wrap;" data-page-node-id="97GHl33FdBuIHCKPbZay1t">
             <button class="btn btn--ghost" id="fav-btn" type="button" data-page-node-id="JXfmN7qodDh5Yum2Rs21gT">收藏</button>
             <a class="btn btn--primary" href="challenge.html" data-page-node-id="WOI93QNHyD4kji1l0qq3iC">去挑战</a>
           </div>
         </div>
       </section>
 
-      <section class="page-body page-body--two page-body--study" data-page-node-id="ApR5RMyI8EekrahiW6o1wv">
+      <!-- ============ 精编专题（仅在无 ?id / ?title 参数时显示） ============ -->
+      <section class="topics-section" id="topics-section" hidden>
+        <div class="topics-head">
+          <h2 class="topics-title">精编专题</h2>
+          <p class="topics-desc">每个专题都是从全站挑出的可读篇目，篇篇有译文与赏析。</p>
+        </div>
+        <div class="topic-grid" id="topic-grid"></div>
+      </section>
+
+      <!-- 专题内诗单（点开某个专题后显示） -->
+      <section class="topic-detail" id="topic-detail" hidden>
+        <div class="topic-detail-head">
+          <button class="btn btn--ghost" id="topic-back" type="button">← 全部专题</button>
+          <div>
+            <h2 class="topic-detail-title" id="topic-detail-title"></h2>
+            <p class="topic-detail-meta" id="topic-detail-meta"></p>
+          </div>
+        </div>
+        <ol class="topic-poem-list" id="topic-poem-list"></ol>
+      </section>
+
+      <section class="page-body page-body--two page-body--study" id="study-body" data-page-node-id="ApR5RMyI8EekrahiW6o1wv">
 
         <!-- 左栏：诗人 / 打卡 / 同题材推荐（次要） -->
         <div class="side-column" data-page-node-id="vnA1Yia42DEMqI1FN6CiPY">
@@ -199,11 +220,12 @@
 
   <script src="assets/data/site-stats.js?v=20260910a" defer></script>
   <script src="assets/data/index-meta.js?v=20260910l" defer></script>
+  <script src="assets/data/topics.js?v=20260910a" defer></script>
   <script src="assets/data/notes.js?v=20260910l" defer></script>
   <script src="assets/js/config.js?v=20260910n" defer></script>
   <script src="assets/js/cloud.js?v=20260910p" defer></script>
   <script src="assets/js/site-nav.js?v=20260910n" defer></script>
-  <script src="assets/js/main.js?v=20260910p" defer></script>
+  <script src="assets/js/main.js?v=20260910q" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>
