@@ -1075,7 +1075,26 @@ body[data-page="auth"] .tabbar { display: none; }
 }
 .topics-desc { font-size: 14px; line-height: 1.8; color: var(--ink-500); margin: 0; }
 
-.topic-grid {
+.topic-grid { display: flex; flex-direction: column; gap: 34px; }
+
+/* 分组：按主题 / 按诗人 / 按朝代 */
+.topic-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.topic-group-title {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink-800);
+  margin: 0;
+  letter-spacing: 1px;
+}
+.topic-group-count { font-size: 12px; color: var(--ink-300); }
+.topic-group-desc { font-size: 13px; color: var(--ink-400); margin: 0 0 14px; }
+.topic-group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
@@ -1170,7 +1189,8 @@ body[data-page="auth"] .tabbar { display: none; }
 }
 @media (max-width: 768px) {
   .topics-title { font-size: 22px; }
-  .topic-grid { grid-template-columns: 1fr; gap: 12px; }
+  .topic-grid { gap: 26px; }
+  .topic-group-grid { grid-template-columns: 1fr; gap: 12px; }
   .topic-card { padding: 17px 18px; }
   .topic-detail-head { flex-direction: column; gap: 12px; }
   /* 窄屏诗句行：标题与作者改为上下排，避免长标题被挤压换行错乱 */

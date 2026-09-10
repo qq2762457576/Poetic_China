@@ -1673,7 +1673,7 @@
     }
 
     /* 经典检索：按 诗题/作者 匹配，取前 8 条
-     * ⚠️ 全库 89,864 首分 6 片，默认只载入 1 片。
+     * ⚠️ 全库 89,927 首分 6 片，默认只载入 1 片。
      *    早期版本只搜 loadedPoems()，导致 5/6 的库搜不出来。
      *    这里在检索框获得焦点时就把全库索引后台补齐。 */
     if (searchInput && searchResults) {
@@ -1956,6 +1956,13 @@
     return -1;
   }
 
+  /* 分组顺序与标题：18 个专题混在一起会看不出层次，按维度分开列 */
+  var TOPIC_GROUPS = [
+    { kind: 'theme', title: '按主题', desc: '同一题材下的篇目' },
+    { kind: 'author', title: '按诗人', desc: '一位诗人读透一组作品' },
+    { kind: 'dynasty', title: '按朝代', desc: '一个时代的整体面貌' }
+  ];
+
   function renderTopics() {
     var section = document.getElementById('topics-section');
     var grid = document.getElementById('topic-grid');
@@ -1964,14 +1971,52 @@
     if (!topics || !topics.length) return false;
 
     section.hidden = false;
-    grid.innerHTML = topics.map(function (t, idx) {
-      return '<button class="topic-card" type="button" data-topic="' + idx + '">' +
-        '<span class="topic-card-name">' + esc(t.name) + '</span>' +
-        (t.from ? '<span class="topic-card-from">' + esc(t.from) + '</span>' : '') +
-        '<span class="topic-card-basis">' + esc(t.basis) + '</span>' +
-        '<span class="topic-card-count">' + t.picked + ' 首</span>' +
-        '</button>';
-    }).join('');
+
+    /* ⚠️ data-topic 存的是**全局下标**，不是组内下标 ——
+     * 分组≠切分数据源，点卡时仍要能取回原专题对象 */
+    var html = '';
+    TOPIC_GROUPS.forEach(function (g) {
+      var idxs = [];
+      topics.forEach(function (t, i) { if (t.kind === g.kind) idxs.push(i); });
+      if (!idxs.length) return;         /* 该维度没有专题（如 topics.js 只含主题）*/
+
+      html += '<div class="topic-group">' +
+        '<div class="topic-group-head">' +
+        '<h3 class="topic-group-title">' + esc(g.title) + '</h3>' +
+        '<span class="topic-group-count">' + idxs.length + ' 个专题</span>' +
+        '</div>' +
+        '<p class="topic-group-desc">' + esc(g.desc) + '</p>' +
+        '<div class="topic-group-grid">' +
+        idxs.map(function (i) {
+          var t = topics[i];
+          return '<button class="topic-card" type="button" data-topic="' + i + '">' +
+            '<span class="topic-card-name">' + esc(t.name) + '</span>' +
+            (t.from ? '<span class="topic-card-from">' + esc(t.from) + '</span>' : '') +
+            '<span class="topic-card-basis">' + esc(t.basis) + '</span>' +
+            '<span class="topic-card-count">' + t.picked + ' 首</span>' +
+            '</button>';
+        }).join('') +
+        '</div></div>';
+    });
+
+    /* 兜底：出现了 TOPIC_GROUPS 未覆盖的 kind，也要显示出来，不能吞掉 */
+    var known = TOPIC_GROUPS.map(function (g) { return g.kind; });
+    var orphans = [];
+    topics.forEach(function (t, i) { if (known.indexOf(t.kind) === -1) orphans.push(i); });
+    if (orphans.length) {
+      html += '<div class="topic-group">' +
+        '<div class="topic-group-head"><h3 class="topic-group-title">其他</h3></div>' +
+        '<div class="topic-group-grid">' +
+        orphans.map(function (i) {
+          var t = topics[i];
+          return '<button class="topic-card" type="button" data-topic="' + i + '">' +
+            '<span class="topic-card-name">' + esc(t.name) + '</span>' +
+            '<span class="topic-card-basis">' + esc(t.basis) + '</span>' +
+            '<span class="topic-card-count">' + t.picked + ' 首</span></button>';
+        }).join('') + '</div></div>';
+    }
+
+    grid.innerHTML = html;
 
     grid.addEventListener('click', function (e) {
       var card = e.target.closest('[data-topic]');
