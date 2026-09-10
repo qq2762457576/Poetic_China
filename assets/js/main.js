@@ -324,7 +324,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911d';
+  var DATA_V = '20260911f';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -940,9 +940,27 @@
     }
     if (state.keyword) {
       var haystack = poem.title + poem.author + poem.line + poem.dynasty + poem.form;
-      if (haystack.indexOf(state.keyword) === -1) return false;
+      if (haystack.indexOf(state.keyword) === -1) {
+        /* 异名兜底：库内用别称著录时，子串匹配会漏掉最著名的那首。
+         * 典型：白居易《琵琶行》底本作《琵琶引》，只靠子串搜索，
+         * 输入「琵琶行」命中的反而是唐人牛殳的同名作品。
+         * 这里查异名表，让读者按通行名也能搜到。 */
+        if (!aliasMatch(poem, state.keyword)) return false;
+      }
     }
     return true;
+  }
+
+  /* 异名匹配：别名表里任一条的「别名」含关键词，且其「库内名」正是本条 → 命中 */
+  function aliasMatch(poem, kw) {
+    var map = window.POEM_ALIASES;
+    if (!map || !kw) return false;
+    var mine = poem.title + '|' + poem.author;
+    for (var k in map) {
+      if (k.indexOf(kw) === -1) continue;
+      if (map[k] === mine) return true;
+    }
+    return false;
   }
 
   /* 全文搜索：元数据无结果时，逐批加载正文块扫描（进度可见，命中 500 封顶） */
