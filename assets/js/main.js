@@ -368,6 +368,28 @@
     return null;
   }
 
+  /* 宽匹配：题库来源的 title/author 与诗词库底本可能不完全一致
+   * （如题库作「黄鹤楼」而库内为「黄鹤楼·崔颢」这一类），做三级降级：
+   *   ① 标题全等 + 作者全等 → ② 标题全等（作者忽略）→ ③ 标题互含（同作者） */
+  function findPoemLoose(title, author) {
+    if (!title) return null;
+    var list = loadedPoems();
+    var i, p, t = String(title).trim(), a = author ? String(author).trim() : '';
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      if (p.title === t && (!a || p.author === a)) return p;
+    }
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      if (p.title === t) return p;
+    }
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      if ((!a || p.author === a) && (p.title.indexOf(t) !== -1 || t.indexOf(p.title) !== -1)) return p;
+    }
+    return null;
+  }
+
   /* ---------- 2. 底部导航 / 移动菜单 ---------- */
   function initTabbar() {
     var page = document.body.getAttribute('data-page');
@@ -839,6 +861,46 @@
     });
   }
 
+  /* ---------- 诗词库：搜索历史 ----------
+   * 只存关键词（本地），最多 8 条，去重且最新的排最前。
+   * 纯辅助功能，不进云端 —— 换设备后重打一次即可，不值得为它增加一张表。 */
+  var HIST_KEY = 'shici_search_history';
+  var HIST_MAX = 8;
+
+  function loadHistory() {
+    try {
+      var a = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+      return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string' && x; }) : [];
+    } catch (e) { return []; }
+  }
+  function pushHistory(kw) {
+    kw = String(kw || '').trim();
+    /* 太短的关键词（单字）记了也没用，反而挤占位置 */
+    if (kw.length < 2) return;
+    var a = loadHistory().filter(function (x) { return x !== kw; });
+    a.unshift(kw);
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(a.slice(0, HIST_MAX))); } catch (e) {}
+    renderHistory();
+  }
+  function clearHistory() {
+    try { localStorage.removeItem(HIST_KEY); } catch (e) {}
+    renderHistory();
+  }
+  function renderHistory() {
+    var row = document.getElementById('history-row');
+    var box = document.getElementById('history-chips');
+    if (!row || !box) return;
+    var a = loadHistory();
+    /* 输入框已有内容时不显示，避免和当前检索动作抢注意力 */
+    var input = document.getElementById('library-search');
+    var typing = !!(input && input.value.trim());
+    if (!a.length || typing) { row.hidden = true; return; }
+    box.innerHTML = a.map(function (kw) {
+      return '<span class="chip" data-history="' + esc(kw) + '">' + esc(kw) + '</span>';
+    }).join('');
+    row.hidden = false;
+  }
+
   function initLibrary() {
     if (!document.getElementById('poem-list')) return;
 
@@ -872,13 +934,39 @@
         state.textHits = null;
         state.page = 1;
         renderPoems();
+        renderHistory();   /* 开始打字就收起历史行 */
       });
+      /* 失焦时如果框是空的，把历史行放回来 */
+      input.addEventListener('blur', function () { setTimeout(renderHistory, 150); });
     }
 
     var form = document.getElementById('library-search-form');
     if (form) {
-      form.addEventListener('submit', function (e) { e.preventDefault(); });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        /* 回车才算「一次检索」——边打边搜会污染历史，只记完整输入的结果 */
+        if (input && input.value.trim()) pushHistory(input.value.trim());
+      });
     }
+
+    /* 历史记录点击复用 */
+    var histChips = document.getElementById('history-chips');
+    if (histChips) {
+      histChips.addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-history]');
+        if (!chip || !input) return;
+        var kw = chip.getAttribute('data-history');
+        input.value = kw;
+        state.keyword = kw;
+        state.textHits = null;
+        state.page = 1;
+        renderPoems();
+        renderHistory();
+      });
+    }
+    var histClear = document.getElementById('history-clear');
+    if (histClear) histClear.addEventListener('click', clearHistory);
+    renderHistory();
 
     bindFilterItems();
 
@@ -903,6 +991,7 @@
           state.textHits = null;
           state.page = 1;
           renderPoems();
+          pushHistory(state.keyword);
         }
       });
     });
@@ -1490,6 +1579,18 @@
       });
       return;
     }
+    /* 按「标题+作者」寻址：错题本等入口没有 poem id，只有题面里的题名与作者。
+     * 索引分片可能还没载入这首，需要异步补片后再找一次。 */
+    var qTitle = params.get('title'), qAuthor = params.get('author');
+    if (!poem && qTitle) {
+      poem = findPoemLoose(qTitle, qAuthor);
+      if (poem) { initStudyWith(poem); return; }
+      titleEl.textContent = '载入中…';
+      IndexStore.ensureAll(null, function () {
+        initStudyWith(findPoemLoose(qTitle, qAuthor) || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+      });
+      return;
+    }
     if (!poem) poem = findByTitleAuthor('登高', '杜甫') || loadedPoems()[0];
     initStudyWith(poem);
   }
@@ -1662,15 +1763,28 @@
         : '<div class="empty-state">白话译文正在编校中。先读原文，体会字面之下的节奏与气息。</div>';
     }
 
-    /* 赏析面板（有背景解析时一并展示） */
+    /* 赏析面板 */
     var aprePanel = document.getElementById('panel-appreciation');
     if (aprePanel) {
       var apre = curated ? curated.appreciation : (extra && extra.s);
-      var bg = !curated && extra && extra.b;
       aprePanel.innerHTML = apre
-        ? '<p class="serif study-prose">' + esc(apre) + '</p>' +
-          (bg ? '<p class="serif study-prose study-prose--bg"><strong>创作背景　</strong>' + esc(bg) + '</p>' : '')
+        ? '<p class="serif study-prose">' + esc(apre) + '</p>'
         : '<div class="empty-state">赏析文章正在编校中。' + esc(poem.form) + ' · ' + esc(poem.themes[0]) + '题材，全文 ' + lines.length + ' 行。</div>';
+    }
+
+    /* 创作背景：独立卡片。
+     * 数据在 notes.js 的 b 字段（449 条注译中有 81 条带背景）。
+     * 没有数据的篇目整张卡片隐藏 —— 不显示空壳，避免「这里本该有内容」的挫败感。 */
+    var bgCard = document.getElementById('background-card');
+    var bgPanel = document.getElementById('panel-background');
+    if (bgCard && bgPanel) {
+      var bg = (curated && curated.background) || (extra && extra.b);
+      if (bg) {
+        bgPanel.innerHTML = '<p class="serif study-prose">' + esc(bg) + '</p>';
+        bgCard.hidden = false;
+      } else {
+        bgCard.hidden = true;
+      }
     }
   }
 
@@ -1759,6 +1873,8 @@
     var made = makeOptions(correct, function (exclude) { return randomFragment(2, exclude); });
     return {
       stem: stem,
+      title: p.title,
+      author: p.author,
       source: p.author + '\u300A' + p.title + '\u300B \u00B7 \u8865\u51FA\u7A7A\u7F3A\u7684\u4E24\u5B57',
       options: made.options,
       answer: made.answer,
@@ -1773,6 +1889,8 @@
     var made = makeOptions(correct, function (exclude) { return randomLineOfLen(correct.length, exclude); });
     return {
       stem: p.lines[i] + '\uFF0C' + repeatChar('\u25A1', correct.length) + '\u3002',
+      title: p.title,
+      author: p.author,
       source: p.author + '\u300A' + p.title + '\u300B \u00B7 \u63A5\u51FA\u4E0B\u53E5',
       options: made.options,
       answer: made.answer,
@@ -1789,6 +1907,8 @@
     var made = makeOptions(correct, function (exclude) { return randomLineOfLen(correct.length, exclude); });
     return {
       stem: stemLines.join('\uFF0C') + '\u3002',
+      title: p.title,
+      author: p.author,
       source: p.author + '\u300A' + p.title + '\u300B \u00B7 \u9ED8\u5199\u7B2C ' + (j + 1) + ' \u53E5',
       options: made.options,
       answer: made.answer,
@@ -1819,10 +1939,99 @@
     }
   }
 
+  /* ---------- 错题本 ----------
+   * 答错时把题目本体存下来（不是存索引 —— 题库每次访问随机换块，索引会失效）。
+   * 存 title+author+stem 三元组即可完整复现题目：stem 是题干，tip 是原句。
+   * 去重键 title + '|' + stem：同一首诗的同一道题只留一条，重复答错只更新时间。 */
+  var WRONG_KEY = 'shici_wrongbook';
+  var WRONG_MAX = 200;   /* 上限，防止本地存储无限膨胀 */
+
+  function loadWrongBook() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(WRONG_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function saveWrongBook(arr) {
+    try { localStorage.setItem(WRONG_KEY, JSON.stringify(arr.slice(0, WRONG_MAX))); } catch (e) {}
+  }
+  function wrongKeyOf(item) {
+    return (item.title || '') + '|' + (item.stem || '');
+  }
+  /* 记录一道错题（已存在则更新时间戳并挪到最前） */
+  function addWrong(item) {
+    var arr = loadWrongBook();
+    var k = wrongKeyOf(item);
+    arr = arr.filter(function (x) { return wrongKeyOf(x) !== k; });
+    arr.unshift({
+      title: item.title || '',
+      author: item.author || '',
+      stem: item.stem || '',
+      tip: item.tip || '',
+      mode: item.mode || 'fill',
+      ts: Date.now()
+    });
+    saveWrongBook(arr);
+    renderWrongBook();
+  }
+  function removeWrong(key) {
+    saveWrongBook(loadWrongBook().filter(function (x) { return wrongKeyOf(x) !== key; }));
+    renderWrongBook();
+  }
+  function clearWrongBook() {
+    saveWrongBook([]);
+    renderWrongBook();
+  }
+
+  /* 渲染错题本。未登录也能用（本地存储），登录后随其他数据一同同步。 */
+  function renderWrongBook() {
+    var box = document.getElementById('wrong-list');
+    if (!box) return;
+    var arr = loadWrongBook();
+    var countEl = document.getElementById('wrong-count');
+    if (countEl) countEl.textContent = arr.length ? String(arr.length) : '0';
+
+    var emptyEl = document.getElementById('wrong-empty');
+    var actionsEl = document.getElementById('wrong-actions');
+    if (emptyEl) emptyEl.hidden = arr.length > 0;
+    if (actionsEl) actionsEl.hidden = arr.length === 0;
+
+    if (!arr.length) { box.innerHTML = ''; return; }
+
+    box.innerHTML = arr.map(function (it) {
+      var k = wrongKeyOf(it);
+      return (
+        '<div class="wrong-item" data-wrong="' + esc(k) + '">' +
+        '<p class="wrong-stem">' + esc(it.stem) + '</p>' +
+        '<p class="wrong-meta">' + esc(it.author) + '《' + esc(it.title) + '》' +
+        '<span class="wrong-mode">' + esc(MODE_NAME[it.mode] || '练习') + '</span></p>' +
+        (it.tip ? '<p class="wrong-tip">' + esc(it.tip) + '</p>' : '') +
+        '<div class="wrong-ops">' +
+        '<a class="wrong-link" href="study.html?title=' + encodeURIComponent(it.title) +
+        '&author=' + encodeURIComponent(it.author) + '">去读这首</a>' +
+        '<button class="wrong-del" data-wrong-del="' + esc(k) + '" type="button">已掌握</button>' +
+        '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function initChallenge() {
     var stemEl = document.getElementById('quiz-stem');
     var optionsEl = document.getElementById('quiz-options');
     if (!stemEl || !optionsEl) return;
+
+    /* 错题本：先渲染本地内容，「已掌握」按钮用事件委托（条目会动态重建） */
+    renderWrongBook();
+    var wrongBox = document.getElementById('wrong-list');
+    if (wrongBox) {
+      wrongBox.addEventListener('click', function (e) {
+        var del = e.target.closest('[data-wrong-del]');
+        if (del) { removeWrong(del.getAttribute('data-wrong-del')); e.preventDefault(); }
+      });
+    }
+    var wrongClear = document.getElementById('wrong-clear');
+    if (wrongClear) wrongClear.addEventListener('click', clearWrongBook);
 
     if (window.QUIZ_POOL_DATA && window.QUIZ_POOL_DATA.length) {
       buildQuizPool();
@@ -2021,7 +2230,12 @@
       });
 
       if (ok) { st.streak += 1; st.correct += 1; }
-      else { st.streak = 0; st.wrong += 1; }
+      else {
+        st.streak = 0;
+        st.wrong += 1;
+        /* 答错就进错题本，之后可在错题本回看、重读原诗 */
+        addWrong({ title: q.title, author: q.author, stem: q.stem, tip: q.tip, mode: st.mode });
+      }
       st.done += 1;
       stats.total += 1;
       stats.done[st.mode] = (stats.done[st.mode] || 0) + 1;

@@ -701,6 +701,25 @@ input, textarea { font: inherit; color: inherit; }
 .hot-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .hot-row .label { font-size: 13px; color: var(--ink-300); }
 
+/* 诗词库：最近搜索行
+ * 与热门检索同构，但 chip 做成空心（热门是实心）以示区分：
+ * 实心 = 站方推荐，空心 = 你自己的记录 */
+.history-row { margin-bottom: 10px; }
+.history-row .chip {
+  background: transparent;
+  border: 1px solid var(--line-input);
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease;
+}
+.history-row .chip:hover { border-color: var(--cinnabar); color: var(--cinnabar); }
+.history-clear {
+  font-size: 12px;
+  color: var(--ink-300);
+  text-decoration: none;
+  margin-left: auto;
+}
+.history-clear:hover { color: var(--cinnabar); }
+
 .poem-row {
   display: flex;
   align-items: center;
@@ -1303,8 +1322,119 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
   line-height: 34px;
 }
 
+/* 课堂页：创作背景卡（仅在有关联资料时显示）
+ * 视觉上比赏析卡轻一档：米色底纹 + 左侧虚线，读起来像「正文之外的注脚」 */
+.background-card {
+  margin-top: 20px;
+  padding: 28px 36px;
+  background: var(--paper, #faf7f1);
+  border: 1px dashed var(--ink-200, #d8d2c8);
+  box-shadow: none;
+}
+.background-card .appreciation-title {
+  font-size: 19px;
+  border-left-color: var(--ink-300, #b9b1a4);
+  color: var(--ink-700, #4a453d);
+}
+.background-card .study-prose {
+  font-size: 16px;
+  line-height: 32px;
+  color: var(--ink-600, #6b655c);
+}
+
 /* 挑战页：玩法卡竖排适配 */
 .challenge-modes .mode-card { width: 100%; }
+
+/* ============================================
+ * 键盘可访问性：焦点可见（PRD 第二十八条）
+ * --------------------------------------------
+ * 用 :focus-visible 而非 :focus —— 鼠标点击不显示轮廓，
+ * 只有键盘 Tab 导航时才出现，视觉上不打扰、功能上不缺失。
+ * 多处 outline:none 是为去掉浏览器默认虚线框，这里统一补回
+ * 一条符合设计语言的朱砂色轮廓。
+ * ============================================ */
+:focus-visible {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: 2px;
+}
+
+/* 搜索框：真实 input 是 border:0 + outline:none 的内层元素，
+ * 焦点不可见 —— 把反馈做在可见的外层容器上。
+ * 圆角较大，轮廓收紧一点才贴合形状 */
+.search-pill:focus-within,
+.search-big:focus-within {
+  outline: 2px solid var(--cinnabar);
+  outline-offset: 1px;
+}
+/* 外层已给反馈，内层不再重复画 */
+.search-pill input:focus-visible,
+.search-big input:focus-visible { outline: none; }
+
+/* 带边距的可点卡片/选项：轮廓外拓，避免压在边框上 */
+.option:focus-visible,
+.mode-card:focus-visible { outline-offset: 3px; }
+/* 标签紧贴排列，外拓会互相压住，收紧 */
+.tab:focus-visible { outline-offset: 1px; }
+
+/* 挑战页：错题本
+ * 侧栏空间窄，条目做成紧凑卡；题干用衬线体（是诗句），元信息和操作行用小字 */
+.wrong-list { display: flex; flex-direction: column; gap: 12px; }
+.wrong-item {
+  padding: 12px 14px;
+  border: 1px solid var(--ink-100, #e8e2d6);
+  border-left: 3px solid var(--cinnabar);
+  border-radius: 6px;
+  background: var(--paper, #faf7f1);
+}
+.wrong-stem {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 26px;
+  color: var(--ink-900);
+  margin: 0 0 6px;
+}
+.wrong-meta {
+  font-size: 12px;
+  color: var(--ink-400);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wrong-mode {
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--card, #fff);
+  border: 1px solid var(--ink-100, #e8e2d6);
+  color: var(--ink-500);
+}
+.wrong-tip {
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--ink-500);
+  margin: 6px 0 0;
+}
+.wrong-ops {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ink-100, #e8e2d6);
+}
+.wrong-link { font-size: 12px; color: var(--cinnabar); text-decoration: none; }
+.wrong-link:hover { text-decoration: underline; }
+.wrong-del {
+  font-size: 12px;
+  color: var(--ink-400);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: inherit;
+}
+.wrong-del:hover { color: var(--cinnabar); }
+.wrong-empty { padding: 12px 0; font-size: 13px; line-height: 22px; }
 
 /* 响应式：1180px 以下 */
 @media (max-width: 1180px) {
