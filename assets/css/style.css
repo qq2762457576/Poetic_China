@@ -1247,6 +1247,11 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 .classic-hit:hover { border-color: var(--cinnabar); }
 .classic-hit.is-picked { border-color: var(--cinnabar); background: rgba(156, 59, 46, .06); }
 .classic-hit-line { font-size: 13px; color: var(--ink-400, #857B70); margin-top: 4px; font-family: 'Noto Serif SC', serif; }
+/* 全库索引仍在后台载入时的提示条（如实告知结果可能不全） */
+.classic-more {
+  font-size: 12px; color: var(--ink-400, #857B70);
+  padding: 6px 2px; text-align: center;
+}
 
 .review-queue { display: flex; flex-direction: column; gap: 14px; }
 .review-item {

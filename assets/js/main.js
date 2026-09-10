@@ -1391,6 +1391,10 @@
     });
   }
 
+  /* 审核面板渲染
+   * ⚠️ 待审队列必须读**云端**：帖子存在 Supabase posts 表里，
+   *    早期版本这里读 getPosts()（localStorage），而提交写的是云端，
+   *    两边不通 → 队列永远是空的。不要再改回本地读取。 */
   function renderModeration() {
     var panel = document.getElementById('moderation-panel');
     if (!panel) return;
@@ -1399,32 +1403,66 @@
     panel.hidden = !canReview();
     if (panel.hidden) return;
 
-    var pending = getPosts().filter(function (p) { return p.status === 'pending'; });
     var queueEl = document.getElementById('moderation-queue');
     var countEl = document.getElementById('moderation-count');
-    if (countEl) countEl.textContent = pending.length;
+
+    /* 云端模式：向数据库要待审队列（RLS 会挡下无权限的人） */
+    if (window.Cloud && window.Cloud.ready && window.Cloud.posts.pending) {
+      if (queueEl) queueEl.innerHTML = '<div class="empty-state">正在载入待审队列…</div>';
+      window.Cloud.posts.pending(function (rows) {
+        if (!rows) {
+          /* 拉取失败（如未执行 patch_review_v2.sql）→ 说清楚原因，别假装队列为空 */
+          if (queueEl) {
+            queueEl.innerHTML =
+              '<div class="empty-state">待审队列读取失败。若你是站长，' +
+              '请确认已在 Supabase 执行 <code>supabase/patch_review_v2.sql</code>。</div>';
+          }
+          if (countEl) countEl.textContent = '—';
+          return;
+        }
+        var list = rows.map(normalizeCloudPost);
+        if (countEl) countEl.textContent = list.length;
+        if (queueEl) {
+          queueEl.innerHTML = list.length ? list.map(reviewCard).join('')
+            : '<div class="empty-state">审核队列已清空，喝杯茶吧</div>';
+          fillClassicBodies(queueEl);
+        }
+        renderReviewerList();
+      });
+      return;
+    }
+
+    /* 本地模式：帖子本来就存在本机，读本地即可 */
+    var local = getPosts().filter(function (p) { return p.status === 'pending'; });
+    if (countEl) countEl.textContent = local.length;
     if (queueEl) {
-      queueEl.innerHTML = pending.length
-        ? pending.map(function (p) {
-            return (
-              '<div class="review-item" data-review="' + esc(p.id) + '">' +
-              '<div class="review-body">' +
-              '<div class="post-head"><span class="avatar avatar--sm">' + esc((p.author || '诗')[0]) + '</span>' +
-              '<span class="who">' + esc(p.author) + (p.kind === 'classic' ? ' · 分享经典' : ' · 原创') + '</span></div>' +
-              '<h3 class="post-title">' + esc(p.title) + '</h3>' +
-              '<p class="poem-body">' + postBody(p) + '</p>' +
-              '</div>' +
-              '<div class="review-actions">' +
-              '<button class="btn btn--primary" data-approve>通过</button>' +
-              '<button class="btn btn--ghost" data-reject>驳回</button>' +
-              '</div>' +
-              '</div>'
-            );
-          }).join('')
+      queueEl.innerHTML = local.length ? local.map(reviewCard).join('')
         : '<div class="empty-state">审核队列已清空，喝杯茶吧</div>';
       fillClassicBodies(queueEl);
     }
+    renderReviewerList();
+  }
 
+  /* 单条待审卡片的 HTML */
+  function reviewCard(p) {
+    return (
+      '<div class="review-item" data-review="' + esc(p.id) + '">' +
+      '<div class="review-body">' +
+      '<div class="post-head"><span class="avatar avatar--sm">' + esc((p.author || '诗')[0]) + '</span>' +
+      '<span class="who">' + esc(p.author) + (p.kind === 'classic' ? ' · 分享经典' : ' · 原创') + '</span></div>' +
+      '<h3 class="post-title">' + esc(p.title) + '</h3>' +
+      '<p class="poem-body">' + postBody(p) + '</p>' +
+      '</div>' +
+      '<div class="review-actions">' +
+      '<button class="btn btn--primary" data-approve>通过</button>' +
+      '<button class="btn btn--ghost" data-reject>驳回</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  /* 审核人名单 + 授权表单（与队列分开渲染，避免被异步打乱） */
+  function renderReviewerList() {
     /* 审核人列表：站长置顶且不可移除 */
     var reviewerList = document.getElementById('reviewer-list');
     if (reviewerList) {
@@ -1505,8 +1543,26 @@
       });
     }
 
-    /* 经典检索：按 诗题/作者 匹配，取前 8 条 */
+    /* 经典检索：按 诗题/作者 匹配，取前 8 条
+     * ⚠️ 全库 89,864 首分 6 片，默认只载入 1 片。
+     *    早期版本只搜 loadedPoems()，导致 5/6 的库搜不出来。
+     *    这里在检索框获得焦点时就把全库索引后台补齐。 */
     if (searchInput && searchResults) {
+      var _allHinted = false;
+      function ensureFullIndex() {
+        if (_allHinted) return;
+        _allHinted = true;
+        IndexStore.ensureAll(null, function () {
+          /* 全库补齐后，如果框里还有关键词，重搜一次让用户看到完整结果 */
+          if (searchInput.value.trim()) searchInput.dispatchEvent(new Event('input'));
+        });
+      }
+      searchInput.addEventListener('focus', ensureFullIndex);
+      /* 切到「分享经典」模式时也预取，用户开始打字就不必等 */
+      document.querySelectorAll('[data-compose-mode="classic"]').forEach(function (c) {
+        c.addEventListener('click', ensureFullIndex);
+      });
+
       searchInput.addEventListener('input', function () {
         var kw = searchInput.value.trim();
         picked = null;
@@ -1514,12 +1570,16 @@
           searchResults.innerHTML = '';
           return;
         }
+        ensureFullIndex();
         var hits = [];
         var _pool = loadedPoems();
-        for (var i = 0; i < _pool.length && hits.length < 8; i++) {
+        for (var i = 0; i < _pool.length; i++) {
           var p = _pool[i];
           if (p.title.indexOf(kw) !== -1 || p.author.indexOf(kw) !== -1) hits.push(p);
+          if (hits.length >= 8) break;
         }
+        /* 索引还在补齐时，把「结果可能不全」如实告诉用户，别让人误以为库里没有 */
+        var more = !IndexStore.loadedCount || IndexStore.loadedCount() < IndexStore.totalCount;
         searchResults.innerHTML = hits.length
           ? hits.map(function (p) {
               return (
@@ -1528,8 +1588,10 @@
                 '<div class="classic-hit-line">' + esc(p.line) + '</div>' +
                 '</div>'
               );
-            }).join('')
-          : '<div class="empty-state">库里没搜到，换个关键词</div>';
+            }).join('') + (more ? '<div class="classic-more">全库仍在载入，结果可能不全…</div>' : '')
+          : (more
+              ? '<div class="empty-state">全库载入中，稍等再试；或换个更常见的关键词</div>'
+              : '<div class="empty-state">库里没搜到，换个关键词</div>');
       });
       searchResults.addEventListener('click', function (e) {
         var hit = e.target.closest('[data-pick]');
@@ -1585,15 +1647,19 @@
             poemId: null
           });
         }
-        /* 云端模式：直接写库（RLS 只允许写自己的），所有人立即可见 */
+        /* 云端模式：写库。status 由 cloud.js 按 draft.status 决定（= pending），
+         * 审核通过后才公开。失败时兜底存本地，至少不丢用户写的内容。 */
         if (window.Cloud && window.Cloud.ready) {
           window.Cloud.posts.create(draft, function (row) {
             if (!row) {
               var fallback = getPosts();
               fallback.push(draft);
               setPosts(fallback);
+              var hintFail = document.getElementById('feed-hint');
+              if (hintFail) hintFail.textContent = '云端提交失败，已暂存在本机。请检查网络后重试。';
             }
             renderFeed();
+            renderModeration();
           });
         } else {
           var posts = getPosts();
@@ -1614,20 +1680,44 @@
       });
     }
 
-    /* --- 审核操作 --- */
+    /* --- 审核操作 ---
+     * 云端模式下必须写回 Supabase：早期版本只改 localStorage，
+     * 而队列读的是云端，改完刷新就复原（看起来像「点了没反应」）。 */
     var queue = document.getElementById('moderation-queue');
     if (queue) {
       queue.addEventListener('click', function (e) {
         var item = e.target.closest('[data-review]');
         if (!item) return;
+        if (!canReview()) return;   /* 无审核权不发请求，省一次必然被拒的往返 */
         var id = item.getAttribute('data-review');
+        var next = null;
+        if (e.target.closest('[data-approve]')) next = 'approved';
+        else if (e.target.closest('[data-reject]')) next = 'rejected';
+        else return;
+
+        /* 云端模式：调数据库（RLS 的 posts_update_reviewer 策略兜底） */
+        if (window.Cloud && window.Cloud.ready && window.Cloud.posts.setStatus) {
+          var btns = item.querySelectorAll('button');
+          btns.forEach(function (b) { b.disabled = true; });
+          window.Cloud.posts.setStatus(id, next, function (ok) {
+            btns.forEach(function (b) { b.disabled = false; });
+            if (!ok) {
+              var tip = document.getElementById('reviewer-hint');
+              if (tip) tip.textContent = '审核失败：请确认已执行 patch_review_v2.sql，且你具备审核权。';
+              return;
+            }
+            renderModeration();
+            renderFeed();
+          });
+          return;
+        }
+
+        /* 本地模式：改本机存储 */
         var posts = getPosts();
         var target = null;
         posts.forEach(function (p) { if (p.id === id) target = p; });
         if (!target) return;
-        if (e.target.closest('[data-approve]')) target.status = 'approved';
-        else if (e.target.closest('[data-reject]')) target.status = 'rejected';
-        else return;
+        target.status = next;
         setPosts(posts);
         renderFeed();
         renderModeration();

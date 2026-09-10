@@ -155,12 +155,26 @@
             poem_id: (post.poemId === null || post.poemId === undefined) ? null : post.poemId,
             author: post.author,
             user_id: uid,
-            status: 'approved',
+            /* 尊重调用方指定的状态：默认待审，审核通过后才公开。
+             * 早期版本这里写死 'approved'，导致审核流程形同虚设 —— 不要改回去。 */
+            status: post.status || 'pending',
             likes: 0
           };
           c.from('posts').insert(row).select().then(function (r) {
             cb(r.error ? null : (r.data && r.data[0]));
           });
+        });
+      },
+      /* 审核队列：拉取全部待审帖子（含他人发布的）。
+       * 依赖数据库的 posts_select_reviewer 策略 —— 没有审核权的人会被 RLS 挡下，
+       * 拿不到数据（而不是拿到数据后再由前端过滤），前端权限校验只是第一道。 */
+      pending: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          c.from('posts').select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
+            .then(function (r) { cb(r.error ? null : (r.data || [])); });
         });
       },
       like: function (id, cb) {
