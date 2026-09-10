@@ -6,3 +6,7 @@ generated-images/
 
 # 诗词原始数据分片与转换脚本（体积大，可由开源仓库重新生成）
 poetry-raw/
+
+# 数据备份文件，不提交
+*.bak.js
+*.bak.json
