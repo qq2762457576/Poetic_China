@@ -148,7 +148,17 @@ input, textarea { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* 图标显式取色：SVG 用 currentColor 时依赖此处的 color。
+     原来靠 SVG 内硬编码 stroke="#221E1A" 上色，抽成组件后统一走 currentColor，
+     这里必须给出确定的颜色，否则会继承父级（可能是链接色）而不一致。 */
+  color: var(--ink-900, #221e1a);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: none;
 }
+.icon-btn:hover { color: var(--cinnabar); }
 
 /* 显隐工具 */
 .only-mobile { display: none !important; }
