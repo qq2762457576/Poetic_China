@@ -119,6 +119,37 @@
         if (typeof window.__refreshChallenge === 'function') window.__refreshChallenge();
       }
     });
+
+    /* 错题本：与云端取并集（同一题的重复记录保留时间戳更晚的那条）
+     * 本地独有的推上云；云端独有的落回本地。合完刷新错题面板与「我的」页。 */
+    if (window.Cloud.wrongbook) window.Cloud.wrongbook.list(function (cloudItems) {
+      if (!cloudItems) return;
+      var local = loadWrongBook();
+      var byKey = {};
+      function take(it) {
+        var k = wrongKeyOf(it);
+        var prev = byKey[k];
+        if (!prev || (it.ts || 0) > (prev.ts || 0)) byKey[k] = it;
+      }
+      local.forEach(take);
+      cloudItems.forEach(take);
+
+      var mergedArr = Object.keys(byKey).map(function (k) { return byKey[k]; })
+        .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+        .slice(0, WRONG_MAX);
+
+      if (mergedArr.length !== local.length) {
+        saveWrongBook(mergedArr);
+        renderWrongBook();
+        if (typeof window.__refreshMe === 'function') window.__refreshMe();
+      }
+
+      /* 云端缺的那些（含本地新增）推上去 */
+      var cloudKeys = {};
+      cloudItems.forEach(function (it) { cloudKeys[wrongKeyOf(it)] = true; });
+      var toPush = mergedArr.filter(function (it) { return !cloudKeys[wrongKeyOf(it)]; });
+      if (toPush.length) window.Cloud.wrongbook.merge(toPush);
+    });
   }
 
   /* ---------- 账号体系 ----------
@@ -659,6 +690,11 @@
   function initMe() {
     var subtitle = document.getElementById('me-subtitle');
     if (!subtitle) return;   /* 不是「我的」页，直接退出 */
+
+    /* 云端数据同步完成后重画统计数字（由 syncUserData 调用）。
+     * 与 __refreshChallenge 同构：同步是异步的，回来时页面已经画过一次了，
+     * 必须有个入口让数字跟上。没有这个钩子，错题数会一直停着同步前的旧值。 */
+    window.__refreshMe = function () { initMe(); };
 
     var name = CURRENT_USER || Auth.current() || null;
     var guestCard = document.getElementById('me-guest-card');
@@ -2655,32 +2691,52 @@
   function saveWrongBook(arr) {
     try { localStorage.setItem(WRONG_KEY, JSON.stringify(arr.slice(0, WRONG_MAX))); } catch (e) {}
   }
+  /* 去重键：title + '|' + stem。
+   * ⚠️ 这里要 trim，且与云端唯一约束 (user_id,title,stem) 口径一致：
+   * 键不一致 = 同一道题被当两条，合并时会重复堆积。 */
   function wrongKeyOf(item) {
-    return (item.title || '') + '|' + (item.stem || '');
+    return String(item.title || '').trim() + '|' + String(item.stem || '').trim();
   }
   /* 记录一道错题（已存在则更新时间戳并挪到最前） */
   function addWrong(item) {
+    /* ⚠️ 入库前必须 trim：去重键是 title|stem，
+     * 带空白的 " 静夜思 " 与云端的 "静夜思" 会被当成两道题，
+     * 结果就是同一道题反复入库、越同步越多。云端 upsert 与这里口径要一致。 */
+    var title = String(item.title || '').trim();
+    var stem = String(item.stem || '').trim();
+    if (!title || !stem) return;   /* 没有题干就没有复现价值，不入库 */
     var arr = loadWrongBook();
-    var k = wrongKeyOf(item);
+    var k = title + '|' + stem;
     arr = arr.filter(function (x) { return wrongKeyOf(x) !== k; });
-    arr.unshift({
-      title: item.title || '',
-      author: item.author || '',
-      stem: item.stem || '',
+    var rec = {
+      title: title,
+      author: String(item.author || '').trim(),
+      stem: stem,
       tip: item.tip || '',
       mode: item.mode || 'fill',
       ts: Date.now()
-    });
+    };
+    arr.unshift(rec);
     saveWrongBook(arr);
     renderWrongBook();
+    /* 已登录 → 同步上云（fire-and-forget，失败不影响本地体验） */
+    if (loggedIn() && window.Cloud && window.Cloud.wrongbook) {
+      window.Cloud.wrongbook.upsert(rec);
+    }
   }
   function removeWrong(key) {
     saveWrongBook(loadWrongBook().filter(function (x) { return wrongKeyOf(x) !== key; }));
     renderWrongBook();
+    if (loggedIn() && window.Cloud && window.Cloud.wrongbook) {
+      window.Cloud.wrongbook.remove(key);
+    }
   }
   function clearWrongBook() {
     saveWrongBook([]);
     renderWrongBook();
+    if (loggedIn() && window.Cloud && window.Cloud.wrongbook) {
+      window.Cloud.wrongbook.clear();
+    }
   }
 
   /* 渲染错题本。未登录也能用（本地存储），登录后随其他数据一同同步。 */
@@ -2723,6 +2779,17 @@
 
     /* 错题本：先渲染本地内容，「已掌握」按钮用事件委托（条目会动态重建） */
     renderWrongBook();
+    /* 已登录但本地为空 → 错题可能只存在云端（换了设备）。
+     * 这里补拉一次；syncUserData 在登录时也拉，两条路径谁先到都不冲突：
+     * 合并逻辑是幂等的（按去重键取时间戳较晚者），重复执行结果一致。 */
+    if (loggedIn() && !loadWrongBook().length &&
+        window.Cloud && window.Cloud.wrongbook) {
+      window.Cloud.wrongbook.list(function (items) {
+        if (!items || !items.length) return;
+        saveWrongBook(items.slice(0, WRONG_MAX));
+        renderWrongBook();
+      });
+    }
     var wrongBox = document.getElementById('wrong-list');
     if (wrongBox) {
       wrongBox.addEventListener('click', function (e) {

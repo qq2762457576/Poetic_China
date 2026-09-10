@@ -382,6 +382,105 @@
           }).then(function (r) { cb && cb(!r.error); });
         });
       }
+    },
+
+    /* ---------- 错题本（PRD 第二十条） ----------
+     * 与 learned / favs 不同，这里存的是「对象负载」而非裸 id：
+     * title + stem 唯一确定一道题，tip 是原句、mode 是题型。
+     * ⚠️ 故意不存 options / answer —— 原样回放等于让用户背答案。
+     *   「再练」由前端按 title+author 找回原诗、同题型重新出题。
+     * 去重键与数据库唯一约束 (user_id, title, stem) 保持一致。 */
+    wrongbook: {
+      /* 读：返回完整对象数组，按最近答错时间倒序 */
+      list: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          var uid = Cloud.auth.userId();
+          if (!uid) return cb(null);
+          c.from('wrongbook')
+            .select('title,author,stem,tip,mode,wrong_ts')
+            .eq('user_id', uid)
+            .order('wrong_ts', { ascending: false })
+            .then(function (r) {
+              if (r.error) return cb(null);
+              cb((r.data || []).map(function (x) {
+                return {
+                  title: x.title || '',
+                  author: x.author || '',
+                  stem: x.stem || '',
+                  tip: x.tip || '',
+                  mode: x.mode || 'fill',
+                  ts: x.wrong_ts || 0
+                };
+              }));
+            });
+        });
+      },
+      /* 写一条：重复答错同一题时更新时间戳，不产生新行 */
+      upsert: function (item, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          var title = String(item.title || '').trim();
+          var stem = String(item.stem || '').trim();
+          if (!title || !stem) return cb && cb(false);
+          c.from('wrongbook').upsert({
+            user_id: uid,
+            title: title,
+            author: item.author || '',
+            stem: stem,
+            tip: item.tip || '',
+            mode: item.mode || 'fill',
+            wrong_ts: item.ts || Date.now()
+          }, { onConflict: 'user_id,title,stem' })
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      /* 删一条：前端传去重键 "title|stem"（与本地 wrongKeyOf 同构） */
+      remove: function (key, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          var parts = String(key || '').split('|');
+          /* ⚠️ 两侧都 trim：本地键已 trim，云端列也按 trim 后入库，
+           * 只要有一边漏了，删除就会静默命中 0 行（表面上「点了没反应」）。 */
+          var title = (parts[0] || '').trim();
+          var stem = parts.slice(1).join('|').trim();   /* stem 可能含竖线，只切第一个 */
+          if (!title) return cb && cb(false);
+          var q = c.from('wrongbook').delete().eq('user_id', uid).eq('title', title);
+          if (stem) q = q.eq('stem', stem);
+          q.then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      /* 清空全部 */
+      clear: function (cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.from('wrongbook').delete().eq('user_id', uid)
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      },
+      /* 批量合并：首次登录时把本地攒的错题一次性推上云（走 RPC，一次往返） */
+      merge: function (items, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid || !items || !items.length) return cb && cb(false);
+          var rows = items.map(function (it) {
+            return {
+              title: String(it.title || '').trim(),
+              author: it.author || '',
+              stem: String(it.stem || '').trim(),
+              tip: it.tip || '',
+              mode: it.mode || 'fill',
+              wrong_ts: it.ts || Date.now()
+            };
+          }).filter(function (it) { return it.title && it.stem; });
+          if (!rows.length) return cb && cb(false);
+          c.rpc('merge_wrongbook', { p_items: rows })
+            .then(function (r) { cb && cb(!r.error); });
+        });
+      }
     }
   };
 
