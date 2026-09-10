@@ -12,8 +12,15 @@
 -- 说明：
 --   - 幂等设计：重复执行不报错、不重复建表
 --   - 共 4 段，可分段单独执行
---   - ⚠️ 必须先执行过 schema_user_data.sql（本补丁依赖 public.is_admin() 之外
---     无额外依赖，但 RLS 风格与其保持一致）
+--   - 函数用的是 create or replace，**已执行过旧版也可直接重跑**，
+--     只会替换函数体，不动已存的数据
+--
+-- 修订记录：
+--   v1  初版
+--   v2  第 4 段 merge_wrongbook 加「未登录显式拦截」（select auth.uid()
+--       为 null 时不进入 insert）。v1 靠 user_id NOT NULL 约束兜底，
+--       实测确实写不进去（撞 23502），但那是「撞上约束才失败」，
+--       一旦约束被改动就会漏。v2 改为先判断身份再插，不依赖约束。
 -- ============================================================
 
 
@@ -99,7 +106,14 @@ language sql
 security definer
 set search_path = public
 as $$
-  with src as (
+  with me as (
+    -- ⚠️ 显式拿 uid 并在此之前拦住未登录调用。
+    -- 不能只靠 user_id NOT NULL 兜底：那是「撞上约束才失败」，
+    -- 一旦约束被改动（或加了默认值），未登录就能写进脏数据。
+    -- 这里主动返回 0 行、不进入 insert，是「先拦后放」。
+    select auth.uid() as uid
+  ),
+  src as (
     select
       coalesce(nullif(trim(x.title), ''), '') as title,
       coalesce(x.author, '')                  as author,
@@ -112,12 +126,17 @@ as $$
     )
   ),
   valid as (
-    -- 标题与题干都为空的行没有复现价值，挡在入库前
-    select * from src where title <> '' and stem <> ''
+    -- 必须已登录；且标题与题干都不为空（空行没有复现价值）
+    select s.*
+    from src s, me
+    where me.uid is not null
+      and s.title <> ''
+      and s.stem  <> ''
   ),
   ins as (
     insert into public.wrongbook (user_id, title, author, stem, tip, mode, wrong_ts)
-    select auth.uid(), title, author, stem, tip, mode, wrong_ts from valid
+    select me.uid, v.title, v.author, v.stem, v.tip, v.mode, v.wrong_ts
+    from valid v, me
     on conflict (user_id, title, stem) do update set
       -- 重复答错时保留更新的那次时间戳，其余字段以最新一次为准
       author   = excluded.author,
@@ -129,6 +148,8 @@ as $$
   select count(*)::integer from ins;
 $$;
 
+-- 只授给 authenticated：未登录不该有这个函数的执行权。
+-- 函数内部的 uid 判空是第一层，这里授权限是第二层，双层兜底。
 grant execute on function public.merge_wrongbook(jsonb) to authenticated;
 
 
