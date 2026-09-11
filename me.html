@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260911p" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260911q" />
 </head>
 <body data-page="me" data-nav-account="me">
 
@@ -39,11 +39,11 @@
         </div>
       </section>
 
-      <!-- 未登录提示条：登录后自动隐藏 -->
+      <!-- 未登录提示条：登录后自动隐藏。文案按模式切换（本地模式下不能承诺上云） -->
       <div class="card me-guest-card" id="me-guest-card" hidden>
         <div class="me-guest-text">
-          <h3>登录后进度不丢</h3>
-          <p>现在标记的已学、收藏与成绩都只存在这台设备上。登录后会自动合并上云，换设备也能接着学。</p>
+          <h3 id="me-guest-title">登录后进度不丢</h3>
+          <p id="me-guest-desc">现在标记的已学、收藏与成绩都只存在这台设备上。登录后会自动合并上云，换设备也能接着学。</p>
         </div>
         <a class="btn btn--primary" href="auth.html">登录 / 注册</a>
       </div>
@@ -122,6 +122,25 @@
         </div>
       </section>
 
+      <!-- ============ 数据存储说明（Phase 2.8）：如实说明当前模式 ============ -->
+      <section class="card me-store-card" id="me-store-card">
+        <div class="me-store-head">
+          <span class="mode-badge" id="me-mode-badge">
+            <span class="mode-badge-dot" aria-hidden="true"></span>
+            <span class="mode-badge-text" id="me-mode-badge-text">本地</span>
+          </span>
+          <h3 class="me-store-title" id="me-store-title">数据存储</h3>
+        </div>
+        <p class="me-store-desc" id="me-store-desc">正在确认存储方式…</p>
+        <div class="me-store-rows">
+          <div class="rank-row"><span>数据位置</span><span id="me-store-where">—</span></div>
+          <div class="divider" style="margin:10px 0;"></div>
+          <div class="rank-row"><span>跨设备同步</span><span id="me-store-sync">—</span></div>
+        </div>
+        <!-- 未登录且云端可用时，给一个明确的动作出口（不是提示而已） -->
+        <a class="btn btn--primary btn--block me-store-cta" id="me-store-cta" href="auth.html" hidden>登录后开启同步</a>
+      </section>
+
       <!-- ============ 主体：左内容 + 右侧栏 ============ -->
       <div class="page-body page-body--me">
 
@@ -183,13 +202,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260911p" defer></script>
-  <script src="assets/data/aliases.js?v=20260911p" defer></script>
-  <script src="assets/data/index-meta.js?v=20260911p" defer></script>
-  <script src="assets/js/config.js?v=20260911p" defer></script>
-  <script src="assets/js/cloud.js?v=20260911p" defer></script>
-  <script src="assets/js/site-nav.js?v=20260911p" defer></script>
-  <script src="assets/js/main.js?v=20260911p" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911q" defer></script>
+  <script src="assets/data/aliases.js?v=20260911q" defer></script>
+  <script src="assets/data/index-meta.js?v=20260911q" defer></script>
+  <script src="assets/js/config.js?v=20260911q" defer></script>
+  <script src="assets/js/cloud.js?v=20260911q" defer></script>
+  <script src="assets/js/site-nav.js?v=20260911q" defer></script>
+  <script src="assets/js/main.js?v=20260911q" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

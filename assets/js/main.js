@@ -296,6 +296,55 @@
     return !!(window.Cloud && window.Cloud.auth && window.Cloud.auth.userId());
   }
 
+  /* ---------- 账号模式描述（Phase 2.8） ----------
+   * 「站点跑在云端还是本地」这件事以前只在「我的」右栏有一行小字，用户基本发现不了。
+   * 这里把它收敛成一个统一描述对象，所有展示位（顶栏徽标 / 我的页说明卡 / 右栏）
+   * 都从这一处取文案，避免各处口径不一致、改了这里忘了那里。
+   *
+   * 三个状态必须严格区分，不能混为一谈：
+   *   1. local          —— config.js 没配 Supabase，数据物理上只可能在本机
+   *   2. cloud-guest    —— 云端可用，但当前没登录，此刻数据仍只写本机
+   *   3. cloud-signed   —— 云端可用且已登录，数据双写并跨设备同步
+   * ⚠️ 最常见也最危险的误标是把 2 说成「已同步」：用户会以为换设备能看到，
+   *    实际没有。所以 cloud-guest 的文案必须明确写「尚未同步 / 登录后才会同步」。 */
+  function accountModeInfo() {
+    var isCloud = cloudMode();
+    if (!isCloud) {
+      return {
+        key: 'local',
+        badge: '本地模式',
+        badgeShort: '本地',
+        title: '本地模式',
+        desc: '本站未连接云端。所有数据只保存在这台设备的浏览器里，' +
+              '清理浏览器数据或换设备都会丢失。',
+        store: '本机（仅这台设备）',
+        sync: '不参与同步'
+      };
+    }
+    if (!loggedIn()) {
+      return {
+        key: 'cloud-guest',
+        badge: '未登录',
+        badgeShort: '未登录',
+        title: '云端可用 · 当前未登录',
+        desc: '本站已连接云端，但你现在还没登录。此刻的学习记录仍然只写在这台设备上，' +
+              '登录后才会自动合并上去，换设备才能接着学。',
+        store: '本机（暂未上云）',
+        sync: '登录后开启'
+      };
+    }
+    return {
+      key: 'cloud-signed',
+      badge: '云端同步中',
+      badgeShort: '云端',
+      title: '云端模式 · 已登录',
+      desc: '学习进度、收藏、错题与头像会同时写入本机和云端，' +
+            '换设备登录同一账号即可接着学。',
+      store: '本机 + 云端',
+      sync: '已开启'
+    };
+  }
+
   /* 登录后：拉云端数据，与本地合并（取并集），并把本地独有的推上去
    * 这样「先本地用了一阵、后来才登录」的用户，进度不会丢 */
   function syncUserData() {
@@ -589,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911p';
+  var DATA_V = '20260911q';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -928,6 +977,33 @@
     });
   }
 
+  /* 顶栏账号模式徽标（Phase 2.8）
+   * 注入到 .header-actions 里，和登录/退出按钮并排。位置上刻意放在账号区附近：
+   * 用户看「我现在是谁」的时候，顺手就能看到「我的数据存在哪」。
+   *
+   * ⚠️ 幂等：initAuthUI 会被反复调用（换头像、同步回来都要重刷），
+   *    所以这里用 data-mode-badge 找已存在的节点做「就地更新」而不是追加，
+   *    否则每刷新一次就多一个徽标。 */
+  function renderModeBadge() {
+    var host = document.querySelector('.header-actions');
+    if (!host) return;
+    var info = accountModeInfo();
+
+    var el = host.querySelector('[data-mode-badge]');
+    if (!el) {
+      el = document.createElement('span');
+      el.setAttribute('data-mode-badge', '');
+      /* 插到最前面，避免把登录按钮挤到搜索图标右侧 */
+      host.insertBefore(el, host.firstChild);
+    }
+    el.className = 'mode-badge mode-badge--' + info.key;
+    el.setAttribute('title', info.title + '：' + info.desc);
+    el.setAttribute('aria-label', info.title + '。' + info.desc);
+    /* 圆点 + 短文案：窄屏只留圆点（CSS 控制），宽屏显示全称 */
+    el.innerHTML = '<span class="mode-badge-dot" aria-hidden="true"></span>' +
+      '<span class="mode-badge-text">' + esc(info.badgeShort) + '</span>';
+  }
+
   /* 顶栏登录态：登录后显示笔名 + 退出 */
   function initAuthUI() {
     var name = Auth.current();
@@ -935,6 +1011,8 @@
     /* 换头像后要能就地刷新顶栏（否则头像换了、顶上还是旧字）。
      * 重跑 initAuthUI 即可：它是幂等的（用 __named / __bound 标记防重复）。 */
     window.__refreshNavAvatar = function () { initAuthUI(); };
+
+    renderModeBadge();
 
     /* 「我的」页的顶栏专用结构：两个容器按登录态互斥显隐 */
     var accBox = document.getElementById('header-account');
@@ -1045,6 +1123,22 @@
       if (guestCard) guestCard.hidden = false;
       if (accountCard) accountCard.hidden = true;
       subtitle.textContent = '你的诗词学习空间';
+
+      /* 未登录提示条按模式给文案。
+       * ⚠️ 本地模式下绝不能写「自动合并上云」—— 没配 Supabase 时云根本不存在，
+       *    登录后数据仍然只在本机。那是句空头承诺，用户按它做决策就会丢数据。 */
+      var gTitle = document.getElementById('me-guest-title');
+      var gDesc = document.getElementById('me-guest-desc');
+      if (cloudMode()) {
+        if (gTitle) gTitle.textContent = '登录后进度不丢';
+        if (gDesc) gDesc.textContent =
+          '现在标记的已学、收藏与成绩都只存在这台设备上。登录后会自动合并上云，换设备也能接着学。';
+      } else {
+        if (gTitle) gTitle.textContent = '进度只存在这台设备上';
+        if (gDesc) gDesc.textContent =
+          '本站当前运行在本地模式，没有连接云端 —— 即使注册登录，数据也仍然只保存在这台设备的浏览器里。' +
+          '清理浏览器数据会一并清空，请注意。';
+      }
     }
     bindMeAvatar();
 
@@ -1083,7 +1177,25 @@
       ? Math.round((st.correct || 0) / answered * 100) + '%'
       : '—');
     setText('me-side-login', name ? (myEmail() || '本地账号') : '未登录');
-    setText('me-side-store', loggedIn() ? '云端同步' : '本机');
+
+    /* --- 3.2 数据存储说明（Phase 2.8）---
+     * 三态文案全部来自 accountModeInfo()，与顶栏徽标同源。
+     * ⚠️ 这里绝不能出现「已同步」字样，除非当前确实处于 cloud-signed：
+     *    未登录时说成已同步，用户会真的以为换设备能看到，属于误导。 */
+    var mi = accountModeInfo();
+    var storeCard = document.getElementById('me-store-card');
+    if (storeCard) {
+      var badge = document.getElementById('me-mode-badge');
+      if (badge) badge.className = 'mode-badge mode-badge--' + mi.key;
+      setText('me-mode-badge-text', mi.badge);
+      setText('me-store-title', mi.title);
+      setText('me-store-desc', mi.desc);
+      setText('me-store-where', mi.store);
+      setText('me-store-sync', mi.sync);
+      var cta = document.getElementById('me-store-cta');
+      if (cta) cta.hidden = (mi.key !== 'cloud-guest');
+    }
+    setText('me-side-store', mi.store);
 
     /* --- 3.5 学习趋势：近 14 天每日学习篇数 ---
      * 数据全部来自 shici_daily（打卡时落的真实日期），没有记录就是空状态。
