@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260911o" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260911p" />
 </head>
 <body data-page="me" data-nav-account="me">
 
@@ -51,13 +51,23 @@
       <!-- 账号卡：登录后显示，含退出入口 -->
       <div class="card me-account-card" id="me-account-card" hidden>
         <div class="me-account-row">
-          <span class="avatar avatar--lg" id="me-avatar">诗</span>
+          <!-- 头像可点击更换；未选过时显示昵称首字 -->
+          <button class="avatar-btn" id="me-avatar-btn" type="button"
+                  title="点击更换头像" aria-label="更换头像">
+            <span class="avatar avatar--lg" id="me-avatar">诗</span>
+            <span class="avatar-btn-mask">更换</span>
+          </button>
+          <input type="file" id="me-avatar-input" accept="image/*" hidden />
           <div class="me-account-info">
             <h3 id="me-name">诗友</h3>
             <p id="me-account-line"></p>
           </div>
-          <button class="btn btn--ghost" id="me-signout" type="button">退出登录</button>
+          <div class="me-account-ops">
+            <button class="btn btn--ghost" id="me-avatar-remove" type="button" hidden>移除头像</button>
+            <button class="btn btn--ghost" id="me-signout" type="button">退出登录</button>
+          </div>
         </div>
+        <p class="me-account-tip" id="me-avatar-tip"></p>
       </div>
 
       <!-- ============ 数据总览：四个数字卡 ============ -->
@@ -173,13 +183,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260911o" defer></script>
-  <script src="assets/data/aliases.js?v=20260911o" defer></script>
-  <script src="assets/data/index-meta.js?v=20260911o" defer></script>
-  <script src="assets/js/config.js?v=20260911o" defer></script>
-  <script src="assets/js/cloud.js?v=20260911o" defer></script>
-  <script src="assets/js/site-nav.js?v=20260911o" defer></script>
-  <script src="assets/js/main.js?v=20260911o" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911p" defer></script>
+  <script src="assets/data/aliases.js?v=20260911p" defer></script>
+  <script src="assets/data/index-meta.js?v=20260911p" defer></script>
+  <script src="assets/js/config.js?v=20260911p" defer></script>
+  <script src="assets/js/cloud.js?v=20260911p" defer></script>
+  <script src="assets/js/site-nav.js?v=20260911p" defer></script>
+  <script src="assets/js/main.js?v=20260911p" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

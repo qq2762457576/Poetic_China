@@ -549,6 +549,52 @@
             .then(function (r) { cb && cb(!r.error); });
         });
       }
+    },
+
+    /* ---------- 用户扩展数据（每日学习记录 / 自定义头像） ----------
+     * 这两类数据共同点：一人一份、整体读写、不需要按字段查询 ——
+     * 因此在库里合成一行（user_data 表的 daily / avatar 两列），
+     * 与 learned / favs 那种「一条一条」的表结构刻意不同。
+     *
+     * ⚠️ 表不存在时的表现：这里所有方法都静默返回 null / false，
+     *    页面看不出任何报错，只是「换设备不同步」。这就是为什么
+     *    patch_user_data.sql 必须真的在 Supabase 里跑过一遍。
+     */
+    userData: {
+      /* 读：返回 { daily: {...}, avatar: "" }；无数据或失败返回 null */
+      get: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(null);
+          var uid = Cloud.auth.userId();
+          if (!uid) return cb(null);
+          c.from('user_data').select('daily,avatar').eq('user_id', uid).maybeSingle()
+            .then(function (r) {
+              if (r.error || !r.data) return cb(null);
+              cb({
+                daily: (r.data.daily && typeof r.data.daily === 'object') ? r.data.daily : {},
+                avatar: r.data.avatar || ''
+              });
+            }, function () { cb(null); });
+        });
+      },
+      /* 写每日记录：走 RPC 在库内合并（同键取较大值），避免「读-改-写」丢数据 */
+      saveDaily: function (daily, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid || !daily) return cb && cb(false);
+          c.rpc('merge_user_daily', { p_daily: daily })
+            .then(function (r) { cb && cb(!r.error); }, function () { cb && cb(false); });
+        });
+      },
+      /* 写头像：单独一个 RPC，因为要支持清空（空串），不能走上面的「只增不减」合并 */
+      saveAvatar: function (dataUri, cb) {
+        ensure(function (c) {
+          var uid = Cloud.auth.userId();
+          if (!c || !uid) return cb && cb(false);
+          c.rpc('save_user_avatar', { p_avatar: String(dataUri || '') })
+            .then(function (r) { cb && cb(!r.error); }, function () { cb && cb(false); });
+        });
+      }
     }
   };
 

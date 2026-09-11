@@ -142,6 +142,32 @@ input, textarea { font: inherit; color: inherit; }
 }
 .avatar--sm { width: 36px; height: 36px; font-size: 15px; }
 
+/* 自定义头像：img 撑满圆形，overflow 裁掉方角 */
+.avatar--img { overflow: hidden; padding: 0; background: var(--chip, #ebe3d4); }
+.avatar--img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* --- 头像更换按钮（「我的」页） --- */
+.avatar-btn {
+  position: relative; flex: none; padding: 0; border: none; background: none;
+  cursor: pointer; border-radius: 50%; line-height: 0;
+}
+.avatar-btn-mask {
+  position: absolute; inset: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .5); color: #fff; font-size: 12px;
+  opacity: 0; transition: opacity .2s ease; line-height: 1;
+}
+.avatar-btn:hover .avatar-btn-mask,
+.avatar-btn:focus-visible .avatar-btn-mask { opacity: 1; }
+/* 键盘焦点可见（站点既有 :focus-visible 约定） */
+.avatar-btn:focus-visible { outline: 2px solid var(--cinnabar, #9c3b2e); outline-offset: 2px; }
+
+.me-account-ops { display: flex; gap: 10px; flex: none; }
+.me-account-tip {
+  font-size: 12px; color: var(--ink-400, #9a938a);
+  margin: 12px 0 0; min-height: 1em;
+}
+
 .icon-btn {
   width: 22px;
   height: 22px;

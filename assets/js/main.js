@@ -99,6 +99,15 @@
     var k = dayKey();
     map[k] = (map[k] || 0) + (n || 1);
     saveDaily(map);
+    /* 已登录则把整份记录推上云（库内按日期取较大值合并）。
+     * 推整份而不是只推今天这一天：合并是幂等的，推全量最省心，
+     * 也顺带把之前离线时攒下的记录补上去。 */
+    pushDailyToCloud();
+  }
+  /* 把本地每日记录推上云。失败静默 —— 本地记录照常可用。 */
+  function pushDailyToCloud() {
+    if (!loggedIn() || !window.Cloud || !window.Cloud.userData) return;
+    window.Cloud.userData.saveDaily(loadDaily());
   }
   /* 取最近 days 天的序列（含今天，按日期正序），补零到满长度 —— 
    * 没学的那天就是 0，这是真实值，不是编的。 */
@@ -125,6 +134,158 @@
       if (seq[i].count > 0) n++; else break;
     }
     return n;
+  }
+
+  /* ---------- 自定义头像 ----------
+   * 存一条 96×96 的 JPEG data URI（约 5–15KB）。
+   *
+   * ⚠️ 为什么不用 Supabase Storage 存文件：
+   *    Storage 有独立的存储与流量配额，而头像只是个小圆图。
+   *    存成一列文本省掉了 bucket 策略、public URL、跨域一整套配置，
+   *    个人站规模下这是最省事也最省钱的方案（SQL 注释里有同样说明）。
+   *
+   * ⚠️ 为什么在本地裁到 96×96 再存：
+   *    用户可能选一张 5MB 的相机原图。不裁就存，本地存不下、
+   *    上传也慢，而且 data URI 进 jsonb 会撑爆单行大小。 */
+  var AVATAR_KEY = 'shici_avatar';
+  var AVATAR_SIZE = 96;        /* 输出边长（正方形） */
+  var AVATAR_MAX_CHARS = 200000;   /* data URI 上限，防超大图撑爆存储 */
+
+  function loadAvatar() {
+    var v = store(AVATAR_KEY, '');
+    return (typeof v === 'string' && v.indexOf('data:image/') === 0) ? v : '';
+  }
+  function saveAvatar(dataUri) {
+    try {
+      if (dataUri) localStorage.setItem(AVATAR_KEY, JSON.stringify(dataUri));
+      else localStorage.removeItem(AVATAR_KEY);
+    } catch (e) { /* 隐私模式 / 超额：静默失败，回退首字头像 */ }
+  }
+  /* 把选中的图片文件裁成正方形并编码为 data URI。
+   * 用 canvas 而不是原样读：见上面 AVATAR_SIZE 的说明。 */
+  function fileToAvatar(file, cb) {
+    if (!file) return cb(null);
+    if (!/^image\//.test(file.type)) return cb(null, '请选择图片文件');
+    /* 原图就超过 8MB 的直接拒：读进内存再裁代价太大，不如让用户先缩一下 */
+    if (file.size > 8 * 1024 * 1024) return cb(null, '图片太大了，请选 8MB 以内的');
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = AVATAR_SIZE;
+          canvas.height = AVATAR_SIZE;
+          var ctx = canvas.getContext('2d');
+          /* 居中裁成正方形：取短边做基准，避免人像被拉扁 */
+          var side = Math.min(img.width, img.height);
+          var sx = (img.width - side) / 2;
+          var sy = (img.height - side) / 2;
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+          var uri = canvas.toDataURL('image/jpeg', 0.8);
+          /* ⚠️ 三重校验，缺一不可：
+           *   ① 必须是 data:image/ 开头 —— 浏览器在画布为空时可能返回
+           *      "data:,"，它既非空串也不超长，光看后两条会放行，
+           *      结果就是 <img src="data:,"> 一片空白，用户以为没反应。
+           *   ② 非空
+           *   ③ 不超上限，防超大图撑爆本地存储与 jsonb 单行 */
+          var badPrefix = String(uri).indexOf('data:image/') !== 0;
+          if (badPrefix || !uri || uri.length > AVATAR_MAX_CHARS) {
+            return cb(null, '图片处理失败，请换一张试试');
+          }
+          cb(uri);
+        } catch (e) {
+          /* canvas 被污染（极少见）或浏览器不支持 → 如实失败，不塞半成品 */
+          cb(null, '图片处理失败，请换一张试试');
+        }
+      };
+      img.onerror = function () { cb(null, '这张图片读不出来，请换一张'); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { cb(null, '文件读取失败，请重试'); };
+    reader.readAsDataURL(file);
+  }
+  /* 统一的头像输出口：当前登录用户有自定义头像就用图，否则回退首字。
+   * ⚠️ 只对本人生效 —— 拿不到别人的头像数据，绝不为他人编造图片。 */
+  function avatarHtml(author, cls) {
+    var name = String(author || '');
+    var ch = esc(name[0] || '诗');
+    var mine = (name === (CURRENT_USER || Auth.current()));
+    var uri = mine ? loadAvatar() : '';
+    var klass = 'avatar' + (cls ? ' ' + cls : '');
+    if (uri) {
+      return '<span class="' + klass + ' avatar--img">' +
+        '<img src="' + esc(uri) + '" alt="" />' +
+        '</span>';
+    }
+    return '<span class="' + klass + '">' + ch + '</span>';
+  }
+
+  /* 「我的」页头像：有自定义图就换成图，否则保持首字 */
+  function renderMeAvatar(name) {
+    var avEl = document.getElementById('me-avatar');
+    if (!avEl) return;
+    var uri = loadAvatar();
+    if (uri) {
+      avEl.classList.add('avatar--img');
+      avEl.innerHTML = '<img src="' + esc(uri) + '" alt="" />';
+    } else {
+      avEl.classList.remove('avatar--img');
+      avEl.textContent = String(name || '诗')[0] || '诗';
+    }
+    /* 「移除头像」只在真的设过时才出现 —— 否则是个点了没反应的死按钮 */
+    var rm = document.getElementById('me-avatar-remove');
+    if (rm) rm.hidden = !uri;
+  }
+
+  /* 换 / 移除头像的交互绑定。
+   * ⚠️ 每次 initMe() 都会重新调用（同步完成后会再画一次），
+   *    所以用 __bound 标记防止重复绑监听 —— 否则一次点击会触发多次上传。 */
+  function bindMeAvatar() {
+    var btn = document.getElementById('me-avatar-btn');
+    var input = document.getElementById('me-avatar-input');
+    var rm = document.getElementById('me-avatar-remove');
+    var tip = document.getElementById('me-avatar-tip');
+    if (!btn || !input || btn.__bound) return;
+    btn.__bound = 1;
+
+    function setTip(t) { if (tip) tip.textContent = t || ''; }
+
+    btn.addEventListener('click', function () {
+      if (!(CURRENT_USER || Auth.current())) return;
+      input.click();
+    });
+
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0];
+      input.value = '';   /* 清掉，否则选同一个文件不会再触发 change */
+      if (!f) return;
+      setTip('正在处理图片…');
+      fileToAvatar(f, function (uri, err) {
+        if (!uri) { setTip(err || '处理失败，请重试'); return; }
+        saveAvatar(uri);
+        renderMeAvatar(CURRENT_USER || Auth.current());
+        setTip('头像已更新' + (loggedIn() ? '，正在同步到云端' : '（仅本机）'));
+        if (window.__refreshNavAvatar) window.__refreshNavAvatar();
+        if (loggedIn() && window.Cloud && window.Cloud.userData) {
+          window.Cloud.userData.saveAvatar(uri, function (ok) {
+            /* 同步失败要说出来 —— 否则用户以为换设备也生效了 */
+            if (!ok) setTip('头像已存在本机，但同步到云端失败，请稍后重试');
+          });
+        }
+      });
+    });
+
+    if (rm) rm.addEventListener('click', function () {
+      saveAvatar('');
+      renderMeAvatar(CURRENT_USER || Auth.current());
+      setTip('已恢复为昵称首字头像');
+      if (window.__refreshNavAvatar) window.__refreshNavAvatar();
+      if (loggedIn() && window.Cloud && window.Cloud.userData) {
+        window.Cloud.userData.saveAvatar('');
+      }
+    });
   }
 
   /* 是否处于云端模式（未登录也算云端模式，只是不推送） */
@@ -216,6 +377,43 @@
       cloudItems.forEach(function (it) { cloudKeys[wrongKeyOf(it)] = true; });
       var toPush = mergedArr.filter(function (it) { return !cloudKeys[wrongKeyOf(it)]; });
       if (toPush.length) window.Cloud.wrongbook.merge(toPush);
+    });
+
+    /* 每日学习记录 + 头像：从 user_data 取回，与本地合并后重画趋势图。
+     * ⚠️ daily 是「当天累计篇数」而非增量，所以同一天取较大值、绝不相加 ——
+     *    相加会把同一批学习重复计入。这个口径必须与库内 merge_user_daily
+     *    的 greatest() 保持一致，两边不一致就会越同步数字越大。 */
+    if (window.Cloud.userData) window.Cloud.userData.get(function (ud) {
+      if (!ud) return;
+      var changed = false;
+
+      if (ud.daily) {
+        var local = loadDaily();
+        var mergedDaily = {};
+        Object.keys(local).forEach(function (k) { mergedDaily[k] = local[k]; });
+        Object.keys(ud.daily).forEach(function (k) {
+          var remote = Number(ud.daily[k]) || 0;
+          var cur = Number(mergedDaily[k]) || 0;
+          if (remote > cur) { mergedDaily[k] = remote; changed = true; }
+        });
+        if (changed) {
+          saveDaily(mergedDaily);
+          if (typeof window.__refreshMe === 'function') window.__refreshMe();
+        }
+        /* 本地有云端没有的（含离线期间新记的）→ 回推一次，补齐 */
+        var missing = Object.keys(local).some(function (k) {
+          return !(k in ud.daily) || (Number(ud.daily[k]) || 0) < (Number(local[k]) || 0);
+        });
+        if (missing) pushDailyToCloud();
+      }
+
+      /* 头像：本地为空而云端有 → 落回本地（换设备场景）
+       * 本地已有则不覆盖 —— 本地刚换的新头像不该被云端旧值盖掉 */
+      if (ud.avatar && !loadAvatar()) {
+        saveAvatar(ud.avatar);
+        if (typeof window.__refreshMe === 'function') window.__refreshMe();
+        if (window.__refreshNavAvatar) window.__refreshNavAvatar();
+      }
     });
   }
 
@@ -391,7 +589,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911o';
+  var DATA_V = '20260911p';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -734,6 +932,10 @@
   function initAuthUI() {
     var name = Auth.current();
 
+    /* 换头像后要能就地刷新顶栏（否则头像换了、顶上还是旧字）。
+     * 重跑 initAuthUI 即可：它是幂等的（用 __named / __bound 标记防重复）。 */
+    window.__refreshNavAvatar = function () { initAuthUI(); };
+
     /* 「我的」页的顶栏专用结构：两个容器按登录态互斥显隐 */
     var accBox = document.getElementById('header-account');
     var guestBox = document.getElementById('header-guest');
@@ -777,7 +979,7 @@
       if (onMe) userLink.setAttribute('aria-current', 'page');
       userLink.setAttribute('data-user-entry', '');
       userLink.innerHTML =
-        '<span class="auth-user-avatar">' + esc(name[0] || '诗') + '</span>' +
+        avatarHtml(name, 'auth-user-avatar') +
         '<span class="auth-user-name">' + esc(name) + '</span>';
       var outLink = document.createElement('a');
       outLink.className = 'btn btn--ghost';
@@ -832,8 +1034,7 @@
       if (guestCard) guestCard.hidden = true;
       var nameEl = document.getElementById('me-name');
       if (nameEl) nameEl.textContent = name;
-      var avEl = document.getElementById('me-avatar');
-      if (avEl) avEl.textContent = name[0] || '诗';
+      renderMeAvatar(name);
       var accLine = document.getElementById('me-account-line');
       if (accLine) {
         var mail = myEmail();
@@ -845,6 +1046,7 @@
       if (accountCard) accountCard.hidden = true;
       subtitle.textContent = '你的诗词学习空间';
     }
+    bindMeAvatar();
 
     /* --- 2. 四个数字卡 --- */
     var learned = learnedIds.length;
@@ -1642,7 +1844,7 @@
     var when = (d.getMonth() + 1) + '月' + d.getDate() + '日';
     return (
       '<article class="card post-card anim-rise is-in" data-post="' + esc(p.id) + '">' +
-      '<div class="post-head"><span class="avatar">' + esc((p.author || '诗')[0]) + '</span>' +
+      '<div class="post-head">' + avatarHtml(p.author) +
       '<span class="who">' + esc(p.author) + ' · ' + when + '</span>' + classicTag + statusBadge + '</div>' +
       '<h3 class="post-title">' + esc(p.title) + '</h3>' +
       '<p class="poem-body">' + postBody(p) + '</p>' +
@@ -1662,7 +1864,7 @@
       ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     return (
       '<div class="comment-item" data-comment="' + esc(c.id) + '">' +
-      '<span class="avatar avatar--xs">' + esc((c.author || '诗')[0]) + '</span>' +
+      avatarHtml(c.author, 'avatar--xs') +
       '<div class="comment-main">' +
       '<span class="comment-who">' + esc(c.author) + ' · ' + when + '</span>' +
       '<p class="comment-body">' + esc(c.body).replace(/\n/g, '<br />') + '</p>' +
@@ -1829,7 +2031,7 @@
     return (
       '<div class="review-item" data-review="' + esc(p.id) + '">' +
       '<div class="review-body">' +
-      '<div class="post-head"><span class="avatar avatar--sm">' + esc((p.author || '诗')[0]) + '</span>' +
+      '<div class="post-head">' + avatarHtml(p.author, 'avatar--sm') +
       '<span class="who">' + esc(p.author) + (p.kind === 'classic' ? ' · 分享经典' : ' · 原创') + '</span></div>' +
       '<h3 class="post-title">' + esc(p.title) + '</h3>' +
       '<p class="poem-body">' + postBody(p) + '</p>' +

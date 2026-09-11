@@ -20,16 +20,34 @@
 ## 2. 建表（复制粘贴一次 SQL）
 
 1. 左侧菜单点 **SQL Editor** → **New query**
-2. 把项目里 `supabase/schema.sql` 的**全部内容**复制进去
-3. 点右下角 **Run**，看到 `Success. No rows returned` 就成了
+2. 按顺序把下面几个文件的**全部内容**复制进去，**每次一个 query、跑完再跑下一个**：
 
-这段 SQL 建了三样东西：
+| 顺序 | 文件 | 建什么 |
+|---|---|---|
+| 1 | `supabase/schema.sql` | `posts` / `comments` 两张表 + RLS（社区分享与评论） |
+| 2 | `supabase/schema_user_data.sql` | `learned` / `favs` / `scores` / `reviewers` 四张表 + RLS |
+| 3 | `supabase/patch_wrongbook.sql` | `wrongbook` 表（错题本上云） |
+| 4 | `supabase/patch_user_data.sql` | `user_data` 表（学习趋势记录 + 自定义头像） |
+| 5 | `supabase/patch_review_v2.sql` | 审核流程增强（如已跑过可跳过） |
+
+3. 每段跑完看到 `Success. No rows returned` 就成了
+
+> ⚠️ **第 4 个是后加的，老用户最容易漏**。漏跑的表现是：
+> 「学习趋势」与「自定义头像」在登录状态下**同步静默失败** ——
+> 本地照常记录、页面上看不出任何报错，只有换设备时才发现没同步上。
+
+### 各表职责
 
 | 对象 | 作用 |
 |---|---|
 | `posts` 表 | 唱诗词分享（标题、正文、作者、状态、点赞数） |
 | `comments` 表 | 评论（关联帖子 + 关联用户） |
-| RLS 策略 | **安全核心**：游客只能读已通过内容，只有登录用户能发帖/评论，且只能改自己的 |
+| `learned` / `favs` 表 | 已学篇目 / 收藏（一条一首） |
+| `scores` 表 | 挑战成绩（一人一行，存历史最好） |
+| `wrongbook` 表 | 错题本（一题一行，按 title+stem 去重） |
+| `reviewers` 表 | 审核人授权名单 |
+| `user_data` 表 | 每日学习记录 + 自定义头像（一人一行，JSON） |
+| RLS 策略 | **安全核心**：游客只能读已通过内容，登录用户只能读写自己的数据 |
 
 > 特别注意：RLS 一定要执行成功。没有它，任何人拿到公开密钥就能删光你的数据。
 
