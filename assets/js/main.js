@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911q';
+  var DATA_V = '20260911r';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -2474,11 +2474,20 @@
     }
   };
 
-  /* POEM_NOTES（assets/data/notes.js）："标题|作者" ->
-   *   y 白话译文 / s 作品赏析 / b 创作背景 / n 词句注释 / m 手册标注名句 / r 背诵提示
-   * 模糊匹配兜底：标题全等 → 标题互含（同作者） */
-  function lookupNotes(title, author) {
+  /* 注译键的两种形态：
+   *   ① "id:标题|作者" —— 同名多首经正文比对唯一定位后精确挂载（优先）
+   *   ② "标题|作者"    —— 唯一的篇目，或同名多首中无法唯一定位的（走兜底）
+   * 查法：先按 id 精确命中；未中再按标题全等；仍未中按同作者标题互含。
+   * ⚠️ 第三级兜底对同名多首是「可能错挂」的 —— 保留它是因为大量标题带
+   *    卷次/异体字的篇目靠它命中，禁用会让这些诗整块失去注译。 */
+  function lookupNotes(title, author, id) {
     var notes = window.POEM_NOTES || {};
+    /* ① 精确：id 命中（点开哪一首就给哪一首的注译） */
+    var nid = (id === undefined || id === null) ? '' : String(id);
+    if (nid) {
+      var byId = notes[nid + ':' + title + '|' + author];
+      if (byId) return byId;
+    }
     var key = title + '|' + author;
     if (notes[key]) return notes[key];
     var k, parts;
@@ -2492,6 +2501,77 @@
     }
     return null;
   }
+
+  /* ---------- 注译分片懒加载（性能：notes.js 3.05MB → 首屏仅索引 42KB） ----------
+   * notes-index.js 给出「键 → 片号」的平行数组，据此只拉用到的那一片。
+   * 与 TextStore 同构：cache 存已载片、pending 存同片的并发回调队列，
+   * 避免同一片被并发请求重复下载。 */
+  var NotesStore = (function () {
+    var cache = {};      /* 片号 -> true（内容已并入 window.POEM_NOTES） */
+    var pending = {};
+    var KEYS = null, CHUNK = null;
+
+    function idxOf(key) {
+      if (!KEYS) {
+        KEYS = window.POEM_NOTES_KEYS || [];
+        CHUNK = window.POEM_NOTES_CHUNK || [];
+      }
+      var i = KEYS.indexOf(key);
+      return i === -1 ? -1 : CHUNK[i];
+    }
+    function loadChunk(no, cb) {
+      if (cache[no]) return cb(true);
+      if (pending[no]) { pending[no].push(cb); return; }
+      pending[no] = [cb];
+      loadScript('assets/data/notes/p' + no + '.js?v=' + DATA_V, function (ok) {
+        var got = window['POEM_NOTES_' + no];
+        if (ok && got) {
+          /* 并入全局表：lookupNotes 的遍历逻辑无需改动 */
+          var N = window.POEM_NOTES || (window.POEM_NOTES = {});
+          for (var k in got) if (got.hasOwnProperty(k)) N[k] = got[k];
+          cache[no] = true;
+        }
+        var cbs = pending[no];
+        delete pending[no];
+        cbs.forEach(function (cb2) { cb2(!!cache[no]); });
+      });
+    }
+    /* 加载某首诗的注译。候选键按精确度降序尝试，取第一个在索引里存在的：
+     *   ① "id:标题|作者" —— 同名多首精确挂载的条目
+     *   ② "标题|作者"    —— 唯一篇目
+     *   ③ 标题全等的任一键 —— 同名多首中未精确挂载的（与 lookupNotes 兜底一致）
+     * 都找不到 → 回调 false，由 lookupNotes 自己再兜底一遍。 */
+    function ensure(title, author, id, cb) {
+      var cands = [];
+      if (id !== undefined && id !== null) cands.push(id + ':' + title + '|' + author);
+      cands.push(title + '|' + author);
+      var no = -1, i;
+      for (i = 0; i < cands.length; i++) { no = idxOf(cands[i]); if (no !== -1) break; }
+      if (no === -1) {
+        /* 标题全等兜底：同名多首里只有其中一首被挂了注译时仍能加载到那一片。
+         * 先调一次 idxOf 确保 KEYS/CHUNK 已从 window 初始化，再遍历。 */
+        idxOf('');
+        for (i = 0; i < KEYS.length; i++) {
+          var p = KEYS[i].split('|');
+          if (p[0] === title) { no = CHUNK[i]; break; }
+        }
+      }
+      if (no === -1) return cb(false);
+      loadChunk(no, cb);
+    }
+    /* 该首诗的注译是否还需要加载 */
+    function need(title, author, id) {
+      var cands = [];
+      if (id !== undefined && id !== null) cands.push(id + ':' + title + '|' + author);
+      cands.push(title + '|' + author);
+      for (var i = 0; i < cands.length; i++) {
+        var no = idxOf(cands[i]);
+        if (no !== -1) return !cache[no];
+      }
+      return false;
+    }
+    return { ensure: ensure, need: need, chunk: loadChunk };
+  })();
 
   /* ---------- 7a. 精编专题（课堂页入口，PRD Phase 2） ----------
    * 数据来自 assets/data/topics.js（build_topics.js 生成）。
@@ -2863,17 +2943,38 @@
     var verseList0 = document.getElementById('verse-list');
     if (verseList0) verseList0.innerHTML = '<div class="empty-state">正文载入中…</div>';
 
-    /* 正文按块懒加载，到位后再渲染原文/注释/译文/赏析 */
+    /* 正文与注译**并行**懒加载，两者都到位再渲染（互不阻塞，谁快都等对方）。
+     * 注译分片是「键所在的那一片」，通常只 1 片（约 400KB）；已在内存时立即回调。 */
+    var _textReady = false, _notesReady = false, _poem = poem;
+    var stepsRedraw = null;   /* initStudySteps 返回的重绘函数，供注译晚到时补绘 */
+    /* 注译回调可能在 initStudySteps 之前就跑完（该片已缓存时是同步回调），
+     * 那时 stepsRedraw 还未赋值 → 记下「已就绪」状态，赋值后再补一次。 */
+    var _notesFired = false;
+    function _tryRender() {
+      if (_textReady && _notesReady) renderStudyText(_poem);
+    }
     TextStore.text(poem.id, function (text) {
-      poem.text = text || poem.line;
-      renderStudyText(poem);
+      _poem.text = text || _poem.line;
+      _textReady = true;
+      _tryRender();
+    });
+    NotesStore.ensure(poem.title, poem.author, poem.id, function () {
+      /* 找不到也照常放行 —— 后续 lookupNotes 会走模糊兜底 */
+      _notesReady = true;
+      _notesFired = true;
+      _tryRender();
+      /* 六步的第 6 步（背诵提示）读 notes.r，且 render() 是同步的 ——
+       * 若用户手快，在分片到位前就点到第 6 步，那一步会显示为空。
+       * 故数据到手后主动重绘一次，让第 6 步就地补上（有则显示，无则整块隐藏）。 */
+      if (typeof stepsRedraw === 'function') stepsRedraw();
     });
 
     /* 六步学习流程（PRD 第十七条）
      * 读原文 → 逐句理解 → 了解背景 → 理解名句 → 整体赏析 → 开始背诵
      * 进度按「每首诗」独立记忆（localStorage: shici_study_step = {poemId: n}），
      * 下次从这首诗上次停下的地方继续。 */
-    initStudySteps(poem);
+    stepsRedraw = initStudySteps(poem);
+    if (_notesFired && typeof stepsRedraw === 'function') stepsRedraw();
 
     /* 注释 / 译文 切换（不依赖正文，直接绑定） */
     var tabBar = document.getElementById('study-tabs');
@@ -3086,7 +3187,7 @@
          * ⚠️ 只呈现手册原文，不生成、不补写（PRD 第四十条）。 */
         var guide = document.getElementById('recite-guide');
         if (guide) {
-          var ex = lookupNotes(poem.title, poem.author);
+          var ex = lookupNotes(poem.title, poem.author, poem.id);
           var rg = ex && ex.r ? String(ex.r).trim() : '';
           if (rg) {
             guide.innerHTML =
@@ -3142,12 +3243,15 @@
     });
 
     render();
+    /* 返回重绘函数：注译分片晚到时可再调一次，
+     * 让第 6 步的背诵提示（读 notes.r）就地补上，无需用户手动切步。 */
+    return render;
   }
 
   /* 正文块到位后：渲染原文 / 注释 / 译文 / 赏析面板 */
   function renderStudyText(poem) {
     var curated = CURATED[poem.title + '|' + poem.author] || null;
-    var extra = lookupNotes(poem.title, poem.author);
+    var extra = lookupNotes(poem.title, poem.author, poem.id);
     var lines = poem.text.split('\n');
 
     /* 原文面板：逐句可点，并可就地标「名句」。
@@ -3457,6 +3561,16 @@
   function verseKey(s) {
     return String(s || '').replace(/[""'']/g, '').replace(/[^\u4e00-\u9fa5]/g, '');
   }
+  /* 手册名句 m 字段 → 归一化后的句子数组。
+   * m 常是多句拼接（「青，取之于蓝…。不积跬步…。锲而舍之…。」），必须拆开逐句落位；
+   * 单引号对内的顿号/分号（「锲而舍之，朽木不折」）仍属同句，故只按句末标点切。
+   * 返回去标点的纯汉字串，长度 < 4 的（语气残句等）由调用方丢弃。*/
+  function splitFamousSentences(m) {
+    return String(m || '')
+      .split(/[。！？!?；;\n]/)
+      .map(function (x) { return verseKey(x); })
+      .filter(function (x) { return x.length >= 4; });
+  }
   function pickFamousLines(poem, lines, curated, appreciation, extra) {
     var out = [];
     /* ① 手工标注的千古名句（最高优先，可信）—— 有则直接用 */
@@ -3467,27 +3581,36 @@
     }
     /* ② 学习手册「四、名句」的标注（笔记 m 字段）—— 这是可查的出版物标注，
      *    不是「系统猜名句」，所以可作提示位（PRD 第四十条）。
-     *    落位规则（库内断行不固定，故不能只比「整行全等」）：
-     *      ① 库内某一行**完整包含**手册名句（库常把两联并作一行）→ 标该行；
-     *      ② 手册名句**跨了库内多行**（库按句/联拆行）→ 标出构成它的每一行（最多 2 行）；
-     *      ③ 都对不上（多为库内异文，如「啼不尽」vs 手册「啼不住」）→ 不标，绝不硬凑。 */
+     *    ⚠️ m 字段常是**多句拼接**（如「青，取之于蓝…。不积跬步…。锲而舍之…。」），
+     *       故必须**先按句切分、再逐句各自落位** —— 整串拿去比对永远匹配不上。
+     *    单句落位规则（库内断行不固定，故不能只比「整行全等」）：
+     *      ⓐ 库内某一行**完整包含**该句（库常把两联并作一行）→ 标该行；
+     *      ⓑ 该句**跨了库内多行**（库按句/联拆行）→ 标出构成它的每一行；
+     *      ⓒ 都对不上（多为库内异文，如「啼不尽」vs 手册「啼不住」）→ 该句不标，绝不硬凑。
+     *    关于「跨行上限」：散文名篇（劝学/三峡/兰亭集序…）正文常按整段或长句断行，
+     *    一句名句跨 3~5 行是常态，故上限按该句长度推导而非写死。*/
     var m = extra && extra.m;
     if (m) {
-      var mk = verseKey(m);
-      if (mk.length >= 4) {
+      var sentences = splitFamousSentences(m);
+      for (var si = 0; si < sentences.length; si++) {
+        var mk = sentences[si];
+        if (mk.length < 4) continue;
+        /* ⓐ 库内整行是该句的子串（库把两联并作一行） */
         for (var q = 0; q < lines.length; q++) {
           var lq = String(lines[q] || '');
           if (lq.trim() && verseKey(lq).indexOf(mk) !== -1) {
             return [{ line: lq, why: '', tag: '手册推荐名句' }];
           }
         }
+        /* ⓑ 该句跨库内多行 —— 收集构成它的每一行 */
         var parts = [];
         for (var w = 0; w < lines.length; w++) {
           var lw = String(lines[w] || '');
           var kw = verseKey(lw);
           if (kw.length >= 4 && mk.indexOf(kw) !== -1 && parts.indexOf(lw) === -1) parts.push(lw);
         }
-        if (parts.length && parts.length <= 2) {
+        var maxParts = Math.max(2, Math.ceil(mk.length / 7) + 2);
+        if (parts.length && parts.length <= maxParts) {
           return parts.map(function (x) { return { line: x, why: '', tag: '手册推荐名句' }; });
         }
       }
