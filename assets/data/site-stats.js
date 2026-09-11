@@ -3,11 +3,11 @@
  * 页面上任何统计数字都必须从这里取，禁止在 HTML 中硬编码。
  */
 window.SITE_STATS={
-  "poems": 89927,
-  "authors": 5393,
+  "poems": 89932,
+  "authors": 5395,
   "dynasties": 10,
   "genres": 8,
-  "notes": 974,
-  "backgrounds": 606,
+  "notes": 1507,
+  "backgrounds": 1221,
   "updated": "2026-09-11"
 };

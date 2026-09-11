@@ -324,7 +324,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911h';
+  var DATA_V = '20260911l';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -2005,7 +2005,8 @@
     }
   };
 
-  /* POEM_NOTES（assets/data/notes.js）："标题|作者" -> {y:译文, s:赏析, b:背景}
+  /* POEM_NOTES（assets/data/notes.js）："标题|作者" ->
+   *   y 白话译文 / s 作品赏析 / b 创作背景 / n 词句注释 / m 手册标注名句 / r 背诵提示
    * 模糊匹配兜底：标题全等 → 标题互含（同作者） */
   function lookupNotes(title, author) {
     var notes = window.POEM_NOTES || {};
@@ -2609,6 +2610,22 @@
             ? '这首诗已在你的学习记录里'
             : '提示：也可先回第一步右侧点「今日打卡」，把这首记入学习记录';
         }
+        /* 学习手册「六、背诵」的提示（节奏 / 脉络 / 易错字）：有则展示，无则整块隐藏。
+         * ⚠️ 只呈现手册原文，不生成、不补写（PRD 第四十条）。 */
+        var guide = document.getElementById('recite-guide');
+        if (guide) {
+          var ex = lookupNotes(poem.title, poem.author);
+          var rg = ex && ex.r ? String(ex.r).trim() : '';
+          if (rg) {
+            guide.innerHTML =
+              '<p class="recite-guide-label">学习手册 · 背诵提示</p>' +
+              '<p class="serif recite-guide-text">' + esc(rg) + '</p>';
+            guide.hidden = false;
+          } else {
+            guide.innerHTML = '';
+            guide.hidden = true;
+          }
+        }
       }
     }
 
@@ -2744,7 +2761,7 @@
     }
 
     /* 创作背景：独立卡片。
-     * 数据在 notes.js 的 b 字段（449 条注译中有 81 条带背景）。
+     * 数据在 notes.js 的 b 字段（1507 条注译中约 1221 条带背景）。
      * 没有数据的篇目整张卡片隐藏 —— 不显示空壳，避免「这里本该有内容」的挫败感。 */
     var bgCard = document.getElementById('background-card');
     var bgPanel = document.getElementById('panel-background');
@@ -2762,33 +2779,35 @@
      * 这一版刻意**不做「系统判定哪句是名句」** —— 那等于用启发式替用户下文学判断，
      * 猜错一次就是编造（PRD 第四十条）。改为「用户自己点选 + 系统只出提示」：
      *   · 点选区列出全篇句子，用户点哪句就是哪句，完全自主；
-     *   · 赏析中确实引用过的句子给一个浅色标记（有据可查，不是猜的）；
+     *   · 学习手册标注的名句给「手册推荐名句」标记（可查的出版物标注，非系统瞎猜）；
+     *   · 赏析中确实引用过的句子给「赏析曾引用」标记（有据可查，不是猜的）；
      *   · 用户选完写自己的理由，理由框留空也不编内容。 */
     var pickList = document.getElementById('pick-lines');
     var famousPanel = document.getElementById('panel-famous');
     var famousCard = document.getElementById('famous-card');
     if (pickList) {
-      var hints = pickFamousLines(poem, lines, curated, apreForFamous(curated, extra));
+      var hints = pickFamousLines(poem, lines, curated, apreForFamous(curated, extra), extra);
       renderPickLines(pickList, lines, hints, poem);
     }
     if (famousPanel) renderPickedFamous(famousPanel, poem);
   }
 
-  /* 第四步的点选区：列出全篇句子，标出「赏析引用过」的提示位。*/
+  /* 第四步的点选区：列出全篇句子，标出「手册推荐 / 赏析引用」的提示位。*/
   function renderPickLines(listEl, lines, hints, poem) {
     var hintSet = {};
-    (hints || []).forEach(function (h) { hintSet[h.line] = h.why || ''; });
+    (hints || []).forEach(function (h) { hintSet[h.line] = { why: h.why || '', tag: h.tag || '赏析曾引用' }; });
     var picked = loadPickedLines(poem.id);
     listEl.innerHTML = lines.map(function (ln, i) {
       var t = String(ln || '').trim();
       if (!t) return '';
       var isHint = Object.prototype.hasOwnProperty.call(hintSet, t);
+      var h = hintSet[t] || {};
       return '<li class="pick-line' + (isHint ? ' pick-line--hint' : '') + '"' +
         ' data-pick-line="' + i + '" data-line-text="' + esc(t) + '"' +
         ' role="button" tabindex="0"' +
         ' aria-pressed="' + (picked.indexOf(t) !== -1 ? 'true' : 'false') + '">' +
         '<span class="pick-line-text serif">' + esc(t) + '</span>' +
-        (isHint ? '<span class="pick-line-tag">赏析曾引用</span>' : '') +
+        (isHint ? '<span class="pick-line-tag">' + esc(h.tag) + '</span>' : '') +
         '</li>';
     }).filter(Boolean).join('');
     /* 恢复上次选择 */
@@ -2962,7 +2981,11 @@
   function apreForFamous(curated, extra) {
     return (curated && curated.appreciation) || (extra && extra.s) || '';
   }
-  function pickFamousLines(poem, lines, curated, appreciation) {
+  /* 诗句归一化：去掉标点、空白、引号，只留汉字，用于「手册名句能否落到原文某句」的比对 */
+  function verseKey(s) {
+    return String(s || '').replace(/[""'']/g, '').replace(/[^\u4e00-\u9fa5]/g, '');
+  }
+  function pickFamousLines(poem, lines, curated, appreciation, extra) {
     var out = [];
     /* ① 手工标注的千古名句（最高优先，可信）—— 有则直接用 */
     if (curated && curated.famous && curated.famous.length) {
@@ -2970,10 +2993,37 @@
         return { line: f[0], why: f[1] || '' };
       });
     }
-    /* ② 按「半句」在前 4 字做匹配 —— 赏析常引用半句、且可能不引全。
-     *    实测这套规则在 449 条真实赏析上命中约 67%，且抽样结果无一误标
+    /* ② 学习手册「四、名句」的标注（笔记 m 字段）—— 这是可查的出版物标注，
+     *    不是「系统猜名句」，所以可作提示位（PRD 第四十条）。
+     *    落位规则（库内断行不固定，故不能只比「整行全等」）：
+     *      ① 库内某一行**完整包含**手册名句（库常把两联并作一行）→ 标该行；
+     *      ② 手册名句**跨了库内多行**（库按句/联拆行）→ 标出构成它的每一行（最多 2 行）；
+     *      ③ 都对不上（多为库内异文，如「啼不尽」vs 手册「啼不住」）→ 不标，绝不硬凑。 */
+    var m = extra && extra.m;
+    if (m) {
+      var mk = verseKey(m);
+      if (mk.length >= 4) {
+        for (var q = 0; q < lines.length; q++) {
+          var lq = String(lines[q] || '');
+          if (lq.trim() && verseKey(lq).indexOf(mk) !== -1) {
+            return [{ line: lq, why: '', tag: '手册推荐名句' }];
+          }
+        }
+        var parts = [];
+        for (var w = 0; w < lines.length; w++) {
+          var lw = String(lines[w] || '');
+          var kw = verseKey(lw);
+          if (kw.length >= 4 && mk.indexOf(kw) !== -1 && parts.indexOf(lw) === -1) parts.push(lw);
+        }
+        if (parts.length && parts.length <= 2) {
+          return parts.map(function (x) { return { line: x, why: '', tag: '手册推荐名句' }; });
+        }
+      }
+    }
+    /* ③ 按「半句」在前 4 字做匹配 —— 赏析常引用半句、且可能不引全。
+     *    实测这套规则在真实赏析上命中约 67%，且抽样结果无一误标
      *    （老骥伏枥 / 采菊东篱下 / 大漠孤烟直 等均为公认名句）。
-     *    剩余 33% 标不出来是正常的 —— 那些诗的赏析本就没引原文，
+     *    剩余标不出来是正常的 —— 那些诗的赏析本就没引原文，
      *    此时第 4 步靠用户自己点选，功能依然成立。*/
     if (appreciation) {
       var flat = String(appreciation);
@@ -2987,7 +3037,7 @@
           if (seg.length < 4) continue;
           if (flat.indexOf(seg.slice(0, 4)) !== -1) { hit = true; break; }
         }
-        if (hit) out.push({ line: raw, why: '' });
+        if (hit) out.push({ line: raw, why: '', tag: '赏析曾引用' });
         if (out.length >= 2) break;
       }
     }

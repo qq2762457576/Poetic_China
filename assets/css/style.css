@@ -2074,6 +2074,21 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   font-size: 18px; line-height: 2; margin: 0 0 22px;
   color: var(--ink-800, #33302b);
 }
+/* 学习手册「背诵提示」（笔记 r 字段）：有则展示，无则整块隐藏 —— 不显示空壳 */
+.recite-guide {
+  margin: 0 0 22px; padding: 16px 18px;
+  border-left: 3px solid var(--cinnabar, #b23a2c);
+  background: rgba(178, 58, 44, .035);
+  border-radius: 0 6px 6px 0;
+}
+.recite-guide-label {
+  margin: 0 0 8px; font-size: 11px; letter-spacing: .08em;
+  color: var(--cinnabar, #b23a2c); opacity: .8;
+}
+.recite-guide-text {
+  margin: 0; font-size: 15px; line-height: 1.95;
+  color: var(--ink-700, #4a453d); white-space: pre-wrap;
+}
 .recite-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* --- 步骤操作条 --- */
