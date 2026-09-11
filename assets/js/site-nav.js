@@ -72,6 +72,7 @@
       { label: '发表作品', href: 'community.html' }
     ] },
     { title: '关于', links: [
+      { label: '数据来源', href: 'sources.html' },
       { label: '隐私政策', href: 'privacy.html' },
       { label: '用户协议', href: 'terms.html' }
     ] }

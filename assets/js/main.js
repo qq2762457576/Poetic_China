@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911v';
+  var DATA_V = '20260911y';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -1345,6 +1345,48 @@
     var d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }
+
+  /* ---------- 时令推荐（PRD 第八条：春→春日、中秋→月亮思乡、毕业季→送别） ----------
+   * 全年六档时令（中秋按公历浮动区间 9.1–10.10 覆盖，文案不写死具体日期）。
+   * 每档给「标题 + 匹配规则」；候选不足 MIN 时整块隐藏 —— 不硬塞（PRD 空状态原则）。
+   * 候选池复用 FEATURED 名篇精选（260 首，首页必载，零额外请求）。 */
+  var SEASON_MIN = 4;
+  var SEASONS = [
+    { id: 'spring', title: '春日诗笺', sub: '时令 · 春',
+      desc: '春山暖日和风。古人把春天写进了几千首诗里，挑几首应应景。',
+      in: function (m) { return m >= 3 && m <= 5; },
+      match: function (t, x) { return /春/.test(t + x); } },
+    { id: 'grad', title: '骊歌一曲送君行', sub: '时令 · 毕业季',
+      desc: '六月是离别的季节。古人送别不流泪，折柳赠诗，情在字间。',
+      in: function (m) { return m === 6; },
+      match: function (t) { return /送|别|柳/.test(t); } },
+    { id: 'summer', title: '夏木阴阴正可人', sub: '时令 · 夏',
+      desc: '荷风送香，蝉鸣入夜。夏天的诗，自带一缕凉意。',
+      in: function (m) { return m === 7 || m === 8; },
+      match: function (t, x) { return /荷|莲|夏|纳凉/.test(t + x); } },
+    { id: 'moon', title: '月圆时节', sub: '时令 · 望月',
+      desc: '海上生明月，天涯共此时。一年里最该读月亮诗的日子。',
+      in: function (m, d) { return m === 9 || (m === 10 && d <= 10); },
+      match: function (t, x) { return /月/.test(t + x); } },
+    { id: 'autumn', title: '秋思入句来', sub: '时令 · 秋',
+      desc: '自古逢秋悲寂寥？秋天的诗，不止一种读法。',
+      in: function (m, d) { return (m === 10 && d > 10) || m === 11; },
+      match: function (t, x) { return /秋/.test(t + x); } },
+    { id: 'winter', title: '晚来天欲雪', sub: '时令 · 岁寒',
+      desc: '绿蚁新醅酒，红泥小火炉。冬天，正该围炉读诗。',
+      in: function (m) { return m === 12 || m === 1 || m === 2; },
+      match: function (t, x) { return /雪|梅|寒/.test(t + x); } }
+  ];
+  /* 纯函数：给定时间与时令表，返回当前档（找不到返回 null）——便于测试 */
+  function currentSeason(now, seasons) {
+    var d = now || new Date();
+    var m = d.getMonth() + 1, day = d.getDate();
+    var list = seasons || SEASONS;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].in(m, day)) return list[i];
+    }
+    return null;
+  }
   /* 可复现伪随机：同一种子同一结果 */
   function seededPick(list, seed, count) {
     if (!list.length) return [];
@@ -1402,6 +1444,28 @@
       var picks = seededPick(list, seed + bi * 104729, b.count);
       b.el.innerHTML = picks.map(function (p) { return miniCard(p, p.form); }).join('');
     });
+
+    /* 时令推荐：按当前日期选档 → 时令关键词筛名篇 → 按日轮换展示 4 首。
+     * 候选不足 SEASON_MIN 时整块保持 hidden（初始即 hidden），不硬塞。 */
+    var seasonEl = document.getElementById('season-section');
+    if (seasonEl && seasonEl.hidden) {
+      var season = currentSeason(new Date());
+      if (season) {
+        var pool = FEATURED.filter(function (p) { return season.match(p.title, p.text); });
+        if (pool.length >= SEASON_MIN) {
+          var picks = seededPick(pool, seed + 733, 4);
+          var tEl = document.getElementById('season-title');
+          var sEl = document.getElementById('season-sub');
+          var dEl = document.getElementById('season-desc');
+          var gEl = document.getElementById('season-grid');
+          if (tEl) tEl.textContent = season.title;
+          if (sEl) sEl.textContent = season.sub;
+          if (dEl) dEl.textContent = season.desc;
+          if (gEl) gEl.innerHTML = picks.map(function (p) { return miniCard(p, p.form); }).join('');
+          seasonEl.hidden = false;
+        }
+      }
+    }
 
     /* 数据条：统一从 SITE_STATS 取真实统计（PRD 第十条：禁止硬编码）
      * 兜底链：SITE_STATS → FEATURED_STATS → 索引元信息 */
