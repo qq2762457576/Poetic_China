@@ -324,7 +324,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911g';
+  var DATA_V = '20260911h';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -2277,7 +2277,7 @@
     if (titleEl) titleEl.textContent = c.name;
     if (metaEl) {
       /* 口径全写在脸上：数字全部来自 courses.js（构建期固化），前端不重算 */
-      metaEl.textContent = c.basis + ' · 入选篇目均有译文与赏析';
+      metaEl.textContent = c.basis + ' · 入选篇目均有注释与赏析';
     }
     renderCourseLessons(c);
 
@@ -2703,14 +2703,26 @@
       renderVersePickHint(verseList, poem);
     }
 
-    /* 注释面板 */
+    /* 注释面板：优先逐句精注（CURATED），其次词句注释（notes.js 的 n 字段，
+     * 来自科目一 docx 学习手册，格式「词：释义」），都没有才显示编校占位。
+     * ⚠️ 不把词注硬凑成逐句 —— 有什么渲染什么，不装。 */
     var notePanel = document.getElementById('panel-notes');
     if (notePanel) {
-      notePanel.innerHTML = curated
-        ? '<ul class="note-list">' + curated.notes.map(function (n) {
-            return '<li class="note-item"><strong>' + esc(n[0]) + '</strong><span>' + esc(n[1]) + '</span></li>';
-          }).join('') + '</ul>'
-        : '<div class="empty-state">该篇的逐句注释正在编校中，欢迎到社区广场分享你的理解。</div>';
+      if (curated) {
+        notePanel.innerHTML = '<ul class="note-list">' + curated.notes.map(function (n) {
+          return '<li class="note-item"><strong>' + esc(n[0]) + '</strong><span>' + esc(n[1]) + '</span></li>';
+        }).join('') + '</ul>';
+      } else if (extra && extra.n && extra.n.length) {
+        notePanel.innerHTML = '<ul class="note-list">' + extra.n.map(function (n) {
+          var sep = n.indexOf('：');
+          if (sep === -1) sep = n.indexOf(':');
+          return sep > 0
+            ? '<li class="note-item"><strong>' + esc(n.slice(0, sep)) + '</strong><span>' + esc(n.slice(sep + 1)) + '</span></li>'
+            : '<li class="note-item"><span>' + esc(n) + '</span></li>';
+        }).join('') + '</ul>';
+      } else {
+        notePanel.innerHTML = '<div class="empty-state">该篇的注释正在编校中，欢迎到社区广场分享你的理解。</div>';
+      }
     }
 
     /* 译文面板 */

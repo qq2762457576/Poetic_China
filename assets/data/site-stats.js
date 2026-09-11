@@ -7,7 +7,7 @@ window.SITE_STATS={
   "authors": 5393,
   "dynasties": 10,
   "genres": 8,
-  "notes": 449,
-  "backgrounds": 82,
+  "notes": 974,
+  "backgrounds": 606,
   "updated": "2026-09-11"
 };

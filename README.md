@@ -56,7 +56,7 @@ assets/
     poems-index/p0-5.js 索引分片（15,000 首/片）
     poems-text/p0-29.js 正文分块（3,000 首/块，按需懒加载）
     featured.js         首页精选 + FEATURED_STATS
-    notes.js            译文 / 赏析 / 创作背景（449 条）
+    notes.js            译文 / 赏析 / 词注 / 创作背景（974 条）
     banks.js            考试与热门题库
     quizpool/p0-3.js    挑战题库分片
   img/                  图片资源
