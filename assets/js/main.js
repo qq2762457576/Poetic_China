@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911y';
+  var DATA_V = '20260911z';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -1202,6 +1202,9 @@
      * 反过来说：这里显示的每一根柱子，都对应那天真的点过一次打卡。 */
     renderMeTrend();
 
+    /* --- 3.6 学习成就：由已学/连续/收藏/成绩实时推导 --- */
+    renderMeAchievements();
+
     /* --- 4. 我的分享：从全站信息流里筛出自己发布的 --- */
     var postsBox = document.getElementById('me-posts');
     if (postsBox && name) {
@@ -1341,6 +1344,90 @@
 
   /* ---------- 4. 首页：每日推荐 + 分体裁板块 ----------
    * 首页只加载 featured.js（54KB，含正文与全站统计），不加载全库索引 */
+  /* ---------- 学习成就（3.5 / PRD 第二十一条）----------
+   * 六项成就全部由已有数据实时推导：
+   *   已学篇目 / 连续天数 / 每日记录 / 收藏数 / 挑战最高分。
+   * ⚠️ 刻意不新增存储字段、不建表 ——
+   *   ① 派生值不会因同步遗漏而与真实进度不一致
+   *   ② 不需要站长跑任何 SQL 补丁（写了≠生效）
+   *   ③ 换设备登录后算出的成就完全一致
+   * ⚠️ 不用「攻克错题数」做成就：错题掌握后即从本中移除，
+   *    历史攻克数没有任何地方记录，做出来只能是编造。
+   * 阈值集中在 ACHIEVEMENTS 表，调整只改这里。 */
+  var ACHIEVEMENTS = [
+    { id: 'first', seal: '初', name: '初识诗香', desc: '学会第一首诗',
+      need: 1, value: function (s) { return s.learned; }, unit: '首' },
+    { id: 'learn30', seal: '积', name: '积学储宝', desc: '累计学会 30 首',
+      need: 30, value: function (s) { return s.learned; }, unit: '首' },
+    { id: 'streak7', seal: '韦', name: '韦编三绝', desc: '连续学习 7 天',
+      need: 7, value: function (s) { return s.streak; }, unit: '天' },
+    { id: 'days10', seal: '诗', name: '诗心不辍', desc: '累计 10 天有学习记录',
+      need: 10, value: function (s) { return s.activeDays; }, unit: '天' },
+    { id: 'fav20', seal: '博', name: '博观约取', desc: '收藏 20 首',
+      need: 20, value: function (s) { return s.favs; }, unit: '首' },
+    { id: 'score80', seal: '才', name: '才高八斗', desc: '挑战单局最高分达 80',
+      need: 80, value: function (s) { return s.bestScore; }, unit: '分' }
+  ];
+  /* 纯函数：给统计对象，返回带进度与达成态的成就列表（便于测试） */
+  function computeAchievements(stats, defs) {
+    var list = defs || ACHIEVEMENTS;
+    var s = stats || {};
+    return list.map(function (a) {
+      var cur = a.value(s) || 0;
+      /* 进度封顶，避免显示「137 / 30」这种超过目标的数字 */
+      var shown = Math.min(cur, a.need);
+      return {
+        id: a.id, seal: a.seal, name: a.name, desc: a.desc,
+        unit: a.unit, need: a.need, cur: cur, shown: shown,
+        got: cur >= a.need
+      };
+    });
+  }
+
+  function renderMeAchievements() {
+    var grid = document.getElementById('me-achieve-grid');
+    if (!grid) return;   /* 不是「我的」页 */
+
+    var st = loadChallengeStats();
+    var daily = loadDaily();
+    var activeDays = 0;
+    Object.keys(daily).forEach(function (k) { if (daily[k] > 0) activeDays++; });
+    var stats = {
+      learned: learnedIds.length,
+      favs: favIds.length,
+      streak: dailyStreak(),
+      activeDays: activeDays,
+      bestScore: st.bestScore || 0
+    };
+    var list = computeAchievements(stats);
+    var got = list.filter(function (a) { return a.got; }).length;
+
+    var gotEl = document.getElementById('me-achieve-got');
+    if (gotEl) gotEl.textContent = String(got);
+
+    grid.innerHTML = list.map(function (a) {
+      return '<div class="me-achieve-item' + (a.got ? ' is-got' : '') + '">' +
+        '<div class="me-achieve-seal" aria-hidden="true">' + esc(a.seal) + '</div>' +
+        '<div class="me-achieve-body">' +
+        '<p class="me-achieve-name">' + esc(a.name) + '</p>' +
+        '<p class="me-achieve-desc">' + esc(a.desc) + '</p>' +
+        '<p class="me-achieve-prog">' +
+        (a.got ? '已达成' : a.shown + ' / ' + a.need + ' ' + esc(a.unit)) +
+        '</p>' +
+        '</div></div>';
+    }).join('');
+
+    /* 全未达成时给一句「怎么才会有」，不冷冰冰地摆六个灰格子 */
+    var noteEl = document.getElementById('me-achieve-note');
+    if (noteEl) {
+      noteEl.hidden = got > 0;
+      if (!got) {
+        noteEl.textContent = '还没有解锁任何成就。读一首诗并点「今日打卡」，'
+          + '「初识诗香」就会亮起来。';
+      }
+    }
+  }
+
   function daySeed() {
     var d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();

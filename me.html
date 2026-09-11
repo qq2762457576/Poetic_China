@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260911y" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260911z" />
 </head>
 <body data-page="me" data-nav-account="me">
 
@@ -128,6 +128,27 @@
         </div>
       </section>
 
+      <!-- ============ 我的成就（3.5 / PRD 第二十一条）============
+           六项成就全部由已有数据实时推导，不新增存储字段、不需要建表：
+           已学篇目 / 连续天数 / 每日记录 / 收藏 / 挑战最高分。
+           这样在任何设备登录都能算出同一结果，也不会因同步遗漏而算错。 -->
+      <section class="card me-achieve" id="me-achieve">
+        <div class="me-achieve-head">
+          <div>
+            <h3 class="section-title">我的成就</h3>
+            <p class="me-achieve-sub" id="me-achieve-sub">根据你已有的学习数据实时统计</p>
+          </div>
+          <div class="me-achieve-count">
+            <span class="me-achieve-count-num" id="me-achieve-got">0</span>
+            <span class="me-achieve-count-total">/ 6</span>
+          </div>
+        </div>
+        <div class="me-achieve-grid" id="me-achieve-grid"></div>
+        <p class="me-achieve-note" id="me-achieve-note" hidden>
+          成就随你的学习进度自动解锁，无需领取。
+        </p>
+      </section>
+
       <!-- ============ 数据存储说明（Phase 2.8）：如实说明当前模式 ============ -->
       <section class="card me-store-card" id="me-store-card">
         <div class="me-store-head">
@@ -208,13 +229,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260911y" defer></script>
-  <script src="assets/data/aliases.js?v=20260911y" defer></script>
-  <script src="assets/data/index-meta.js?v=20260911y" defer></script>
-  <script src="assets/js/config.js?v=20260911y" defer></script>
-  <script src="assets/js/cloud.js?v=20260911y" defer></script>
-  <script src="assets/js/site-nav.js?v=20260911y" defer></script>
-  <script src="assets/js/main.js?v=20260911y" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911z" defer></script>
+  <script src="assets/data/aliases.js?v=20260911z" defer></script>
+  <script src="assets/data/index-meta.js?v=20260911z" defer></script>
+  <script src="assets/js/config.js?v=20260911z" defer></script>
+  <script src="assets/js/cloud.js?v=20260911z" defer></script>
+  <script src="assets/js/site-nav.js?v=20260911z" defer></script>
+  <script src="assets/js/main.js?v=20260911z" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

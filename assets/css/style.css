@@ -2448,6 +2448,87 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 
 /* --- 我的页：数据存储说明卡 --- */
 .me-store-card { padding: 20px 22px; margin-bottom: 30px; }
+
+/* ============ 我的成就（3.5）============
+   未达成：淡墨阴刻（描边 + 灰字）；已达成：朱砂阳刻（实底 + 米白字）。
+   与站内「朱砂印章」语言一致，不用彩色徽章，避免破坏水墨调性。 */
+.me-achieve { padding: 22px 24px 18px; margin-bottom: 30px; }
+.me-achieve-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.me-achieve-head .section-title {
+  font-size: 17px; font-weight: 600; margin: 0 0 6px;
+  color: var(--ink-800, #33302b);
+}
+.me-achieve-sub { font-size: 12px; color: var(--ink-400, #9a938a); margin: 0; }
+.me-achieve-count { display: flex; align-items: baseline; gap: 2px; flex: none; }
+.me-achieve-count-num {
+  font-family: var(--font-serif); font-size: 26px; font-weight: 600;
+  color: var(--cinnabar, #9c3b2e); line-height: 1.2;
+}
+.me-achieve-count-total {
+  font-family: var(--font-serif); font-size: 15px; color: var(--ink-300, #a89e92);
+}
+
+.me-achieve-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.me-achieve-item {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 14px;
+  border: 1px solid var(--line-soft, #e8e0d0);
+  border-radius: var(--radius, 3px);
+  background: var(--sand, #f7f3ea);
+}
+.me-achieve-seal {
+  width: 34px; height: 34px; flex: none;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-weight: 700; font-size: 19px;
+  /* 未达成：阴刻 */
+  background: transparent;
+  color: var(--ink-300, #a89e92);
+  border: 1px solid var(--line, #e0d8c8);
+}
+.me-achieve-body { min-width: 0; }
+.me-achieve-name {
+  font-size: 13.5px; font-weight: 600; margin: 0 0 3px;
+  color: var(--ink-400, #9a938a);
+}
+.me-achieve-desc {
+  font-size: 11.5px; line-height: 1.6; margin: 0 0 4px;
+  color: var(--ink-300, #a89e92);
+}
+.me-achieve-prog {
+  font-size: 11.5px; font-family: var(--font-serif);
+  color: var(--ink-300, #a89e92);
+}
+/* 已达成 */
+.me-achieve-item.is-got { background: var(--card, #fbf8f1); border-color: var(--line, #e0d8c8); }
+.me-achieve-item.is-got .me-achieve-seal {
+  background: var(--cinnabar, #9c3b2e);
+  color: var(--card, #fbf8f1);
+  border-color: var(--cinnabar, #9c3b2e);
+}
+.me-achieve-item.is-got .me-achieve-name { color: var(--ink-800, #33302b); }
+.me-achieve-item.is-got .me-achieve-desc { color: var(--ink-500, #6b6158); }
+.me-achieve-item.is-got .me-achieve-prog { color: var(--cinnabar, #9c3b2e); }
+
+.me-achieve-note {
+  font-size: 11.5px; color: var(--ink-300, #a89e92);
+  margin: 14px 0 0; padding-top: 12px;
+  border-top: 1px solid var(--line-soft, #e8e0d0);
+}
+
+@media (max-width: 640px) {
+  .me-achieve { padding: 18px 16px 14px; }
+  .me-achieve-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 380px) {
+  .me-achieve-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .me-store-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .me-store-title { font-size: 15px; font-weight: 600; margin: 0; color: var(--ink-800, #33302b); }
 .me-store-desc {
