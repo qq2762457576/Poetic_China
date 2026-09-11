@@ -51,6 +51,30 @@
     });
   }
 
+  /* 密码找回：邮件链接要回跳到真实的登录页，否则用户点开邮件会落到首页 */
+  var RESET_REDIRECT = String(CFG.resetRedirect || '').trim() ||
+    (location.origin.indexOf('http') === 0
+      ? location.origin + location.pathname.replace(/[^/]*$/, '') + 'auth.html'
+      : '');
+
+  /* 判断当前 URL 是否带着找回密码的令牌
+   * Supabase 回跳形如 auth.html#access_token=...&type=recovery
+   * ⚠️ SDK 的 detectSessionInUrl 会消费并清掉这些参数，所以只能在
+   *    SDK 建客户端之前判断，或者由 PASSWORD_RECOVERY 事件兜底。 */
+  function isRecoveryUrl() {
+    var h = location.hash || '';
+    return /type=recovery/.test(h) || /type=recovery/.test(location.search || '');
+  }
+
+  function watchRecovery(fn) {
+    ensure(function (c) {
+      if (!c) return;
+      c.auth.onAuthStateChange(function (evt) {
+        if (evt === 'PASSWORD_RECOVERY') fn();
+      });
+    });
+  }
+
   function profileCache() {
     try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); }
     catch (e) { return null; }
@@ -129,6 +153,50 @@
       userId: function () {
         var p = profileCache();
         return p ? p.id : null;
+      },
+
+      /* ---------- 密码重置 ----------
+       * Supabase 流程：
+       *   1) resetPassword() 发邮件，链接回跳 auth.html 并带 #access_token&type=recovery
+       *   2) SDK 的 detectSessionInUrl 自动消费该链接，建立临时会话并触发
+       *      PASSWORD_RECOVERY 事件 → onRecovery() 收到通知
+       *   3) 用户填新密码 → updatePassword() 提交
+       * ⚠️ 重定向地址必须是真实的 auth.html，否则用户点开邮件会落到首页。 */
+      resetPassword: function (email, cb) {
+        ensure(function (c) {
+          if (!c) return cb('云端未配置，无法找回密码');
+          c.auth.resetPasswordForEmail(email, {
+            redirectTo: RESET_REDIRECT
+          }).then(function (r) {
+            /* 出于安全，Supabase 对未注册邮箱也返回成功 —— 不能据此判断账号是否存在 */
+            if (r.error) return cb(r.error.message);
+            cb(null);
+          }, function (e) { cb(e.message || '发送失败'); });
+        });
+      },
+      updatePassword: function (pwd, cb) {
+        ensure(function (c) {
+          if (!c) return cb('云端未配置');
+          c.auth.updateUser({ password: pwd }).then(function (r) {
+            if (r.error) return cb(r.error.message);
+            cb(null);
+          }, function (e) { cb(e.message || '设置失败'); });
+        });
+      },
+      /* 注册「密码找回」状态监听；返回 true 表示当前就处在找回流程中 */
+      onRecovery: function (fn) {
+        if (!ready) { ensure(function () { watchRecovery(fn); }); return isRecoveryUrl(); }
+        watchRecovery(fn);
+        return isRecoveryUrl();
+      },
+      /* 当前是否持有可用的找回会话（用于刷新后仍显示改密码表单） */
+      hasRecoverySession: function (cb) {
+        ensure(function (c) {
+          if (!c) return cb(false);
+          c.auth.getSession().then(function (r) {
+            cb(!!(r.data && r.data.session));
+          }, function () { cb(false); });
+        });
       }
     },
 

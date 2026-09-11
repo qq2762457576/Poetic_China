@@ -92,11 +92,44 @@
           </div>
 
           <div class="switch-row" style="justify-content:flex-end;" data-page-node-id="JnNXaHdzEZEASW0co7IxtB">
-            <a href="#reset" data-page-node-id="F0QZr0S401VaHsRdcLF3sM">忘记密码？</a>
+            <button type="button" class="linklike" id="goto-reset" data-page-node-id="F0QZr0S401VaHsRdcLF3sM">忘记密码？</button>
           </div>
 
           <button class="btn btn--primary btn--block" type="submit" data-page-node-id="AOBodFyOCbgD8ji3HT7GpP">登录</button>
           <p class="form-hint" data-hint data-page-node-id="2zRdw3FNyNCMAPDlUuKHfg"></p>
+        </form>
+
+        <!-- 找回密码：填邮箱收重置邮件（2.6） -->
+        <form data-panel="reset" hidden>
+          <div class="form-head">
+            <h2 class="form-title">找回密码</h2>
+            <p class="form-sub">填注册时的邮箱，我们会发一封重置链接邮件</p>
+          </div>
+          <div class="field">
+            <label for="reset-email">邮箱</label>
+            <input id="reset-email" type="email" placeholder="注册时填写的邮箱" />
+          </div>
+          <button class="btn btn--primary btn--block" type="submit">发送重置邮件</button>
+          <p class="form-hint" data-hint></p>
+          <p class="form-hint"><button type="button" class="linklike" data-switch="login">想起密码了，返回登录</button></p>
+        </form>
+
+        <!-- 设置新密码：点邮件里的链接回到本页后出现 -->
+        <form data-panel="newpwd" hidden>
+          <div class="form-head">
+            <h2 class="form-title">设置新密码</h2>
+            <p class="form-sub">重置链接已验证，请输入新密码</p>
+          </div>
+          <div class="field">
+            <label for="new-pwd">新密码</label>
+            <input id="new-pwd" type="password" placeholder="至少 8 位，含字母与数字" />
+          </div>
+          <div class="field">
+            <label for="new-pwd2">再输一遍</label>
+            <input id="new-pwd2" type="password" placeholder="两次输入要一致" />
+          </div>
+          <button class="btn btn--primary btn--block" type="submit">保存新密码</button>
+          <p class="form-hint" data-hint></p>
         </form>
 
         <div class="oauth-row" data-page-node-id="dwNfgqr3GUie8xXuIEqbr0">
@@ -112,10 +145,10 @@
     </div>
   </div>
 
-  <script src="assets/data/site-stats.js?v=20260911f" defer></script>
-  <script src="assets/data/aliases.js?v=20260911f" defer></script>
-  <script src="assets/js/config.js?v=20260911f" defer></script>
-  <script src="assets/js/cloud.js?v=20260911f" defer></script>
-  <script src="assets/js/main.js?v=20260911f" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911g" defer></script>
+  <script src="assets/data/aliases.js?v=20260911g" defer></script>
+  <script src="assets/js/config.js?v=20260911g" defer></script>
+  <script src="assets/js/cloud.js?v=20260911g" defer></script>
+  <script src="assets/js/main.js?v=20260911g" defer></script>
 </body>
 </html>

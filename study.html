@@ -52,13 +52,35 @@
         </div>
       </section>
 
-      <!-- ============ 精编专题（仅在无 ?id / ?title 参数时显示） ============ -->
+      <!-- ============ 精品课程（仅在无 ?id / ?title / ?course 参数时显示） ============ -->
+      <section class="topics-section" id="courses-section" hidden>
+        <div class="topics-head">
+          <h2 class="topics-title">精品课程</h2>
+          <p class="topics-desc">按体裁与朝代编排的有序学习路径，课次有先后，跟着走完一门课。</p>
+        </div>
+        <div class="topic-grid" id="course-grid"></div>
+      </section>
+
+      <!-- ============ 精编专题（仅在无 ?id / ?title / ?course 参数时显示） ============ -->
       <section class="topics-section" id="topics-section" hidden>
         <div class="topics-head">
           <h2 class="topics-title">精编专题</h2>
           <p class="topics-desc">每个专题都是从全站挑出的可读篇目，篇篇有译文与赏析。</p>
         </div>
         <div class="topic-grid" id="topic-grid"></div>
+      </section>
+
+      <!-- 课程内课次列表（点开某门课程后显示） -->
+      <section class="topic-detail" id="course-detail" hidden>
+        <div class="topic-detail-head">
+          <button class="btn btn--ghost" id="course-back" type="button">← 全部课程</button>
+          <div>
+            <h2 class="topic-detail-title" id="course-detail-title"></h2>
+            <p class="topic-detail-meta" id="course-detail-meta"></p>
+          </div>
+        </div>
+        <p class="topic-detail-meta" id="course-progress" aria-live="polite"></p>
+        <ol class="topic-poem-list" id="course-lesson-list"></ol>
       </section>
 
       <!-- 专题内诗单（点开某个专题后显示） -->
@@ -218,15 +240,16 @@
 
 
 
-  <script src="assets/data/site-stats.js?v=20260911f" defer></script>
-  <script src="assets/data/aliases.js?v=20260911f" defer></script>
-  <script src="assets/data/index-meta.js?v=20260911f" defer></script>
-  <script src="assets/data/topics.js?v=20260911f" defer></script>
-  <script src="assets/data/notes.js?v=20260911f" defer></script>
-  <script src="assets/js/config.js?v=20260911f" defer></script>
-  <script src="assets/js/cloud.js?v=20260911f" defer></script>
-  <script src="assets/js/site-nav.js?v=20260911f" defer></script>
-  <script src="assets/js/main.js?v=20260911f" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911g" defer></script>
+  <script src="assets/data/aliases.js?v=20260911g" defer></script>
+  <script src="assets/data/index-meta.js?v=20260911g" defer></script>
+  <script src="assets/data/topics.js?v=20260911g" defer></script>
+  <script src="assets/data/courses.js?v=20260911g" defer></script>
+  <script src="assets/data/notes.js?v=20260911g" defer></script>
+  <script src="assets/js/config.js?v=20260911g" defer></script>
+  <script src="assets/js/cloud.js?v=20260911g" defer></script>
+  <script src="assets/js/site-nav.js?v=20260911g" defer></script>
+  <script src="assets/js/main.js?v=20260911g" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

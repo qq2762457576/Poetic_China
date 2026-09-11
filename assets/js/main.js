@@ -324,7 +324,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911f';
+  var DATA_V = '20260911g';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -583,6 +583,58 @@
         hint(regForm || loginForm, '演示站点暂未接入第三方登录，请用账号注册 / 登录');
       });
     });
+
+    /* ---------- 密码找回（2.6） ----------
+     * 三个面板切换：login/register 走 tab，reset/newpwd 靠这里。
+     * 恢复流程：邮件链接回跳带 #type=recovery → SDK 建立临时会话并触发
+     * PASSWORD_RECOVERY → 显示「设置新密码」面板。 */
+    function showPanel(name) {
+      document.querySelectorAll('[data-panel]').forEach(function (panel) {
+        panel.hidden = panel.getAttribute('data-panel') !== name;
+      });
+      document.querySelectorAll('.auth-tab').forEach(function (t) {
+        t.classList.toggle('is-active', t.getAttribute('data-mode') === name);
+      });
+    }
+    var gotoReset = document.getElementById('goto-reset');
+    if (gotoReset) {
+      gotoReset.addEventListener('click', function () { showPanel('reset'); });
+    }
+    var resetForm = document.querySelector('form[data-panel="reset"]');
+    if (resetForm) {
+      resetForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = val('reset-email');
+        if (!/^\S+@\S+\.\S+$/.test(email)) return hint(resetForm, '请填写有效的邮箱地址');
+        hint(resetForm, '发送中…', true);
+        window.Cloud.auth.resetPassword(email, function (err) {
+          if (err) return hint(resetForm, err);
+          /* 隐私要点：不透露该邮箱是否已注册（Supabase 对未注册邮箱也返回成功） */
+          hint(resetForm, '如果该邮箱注册过，重置邮件已发出，请到邮箱查收（留意垃圾邮件）', true);
+        });
+      });
+    }
+    var newPwdForm = document.querySelector('form[data-panel="newpwd"]');
+    if (newPwdForm) {
+      newPwdForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var p1 = val('new-pwd');
+        var p2 = val('new-pwd2');
+        if (p1.length < 8 || !/[a-zA-Z]/.test(p1) || !/\d/.test(p1)) return hint(newPwdForm, '密码至少 8 位，且同时包含字母与数字');
+        if (p1 !== p2) return hint(newPwdForm, '两次输入的密码不一致');
+        hint(newPwdForm, '保存中…', true);
+        window.Cloud.auth.updatePassword(p1, function (err) {
+          if (err) return hint(newPwdForm, err);
+          hint(newPwdForm, '新密码已生效，正在进入你的空间…', true);
+          setTimeout(function () { location.href = 'me.html'; }, 700);
+        });
+      });
+    }
+    /* 进入页面时就在找回流程中（点邮件链接回跳）→ 直接显示改密码面板 */
+    if (window.Cloud && window.Cloud.auth && window.Cloud.auth.onRecovery) {
+      var inRecovery = window.Cloud.auth.onRecovery(function () { showPanel('newpwd'); });
+      if (inRecovery) showPanel('newpwd');
+    }
 
     /* 已登录用户直达 */
     if (Auth.current()) {
@@ -2148,28 +2200,157 @@
     });
   }
 
+  /* ============ 精品课程（PRD 第十七条课堂四入口之一） ============
+   * 与专题的区别：课程是有序学习路径 —— 课次有先后、有进度，面向「跟完一门课」。
+   * 课次 id 由 build_courses.js 构建期固化（i 字段），前端不重算；
+   * 已学状态复用 shici_learned（与课堂打卡同一存储，不另起口径）。 */
+  function renderCourses() {
+    var section = document.getElementById('courses-section');
+    var grid = document.getElementById('course-grid');
+    if (!section || !grid) return false;
+    var courses = window.STUDY_COURSES;
+    if (!courses || !courses.length) return false;
+
+    section.hidden = false;
+    grid.innerHTML = courses.map(function (c, i) {
+      return '<button class="topic-card" type="button" data-course="' + i + '">' +
+        '<span class="topic-card-name">' + esc(c.name) + '</span>' +
+        '<span class="topic-card-basis">' + esc(c.basis) + '</span>' +
+        '<span class="topic-card-count">' + c.lessonCount + ' 课</span>' +
+        '</button>';
+    }).join('');
+
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('[data-course]');
+      if (!card) return;
+      var c = courses[parseInt(card.getAttribute('data-course'), 10)];
+      if (c) openCourse(c);
+    });
+    return true;
+  }
+
+  function findCourse(cid) {
+    var courses = window.STUDY_COURSES || [];
+    for (var i = 0; i < courses.length; i++) {
+      if (courses[i].id === cid) return courses[i];
+    }
+    return null;
+  }
+
+  function renderCourseLessons(c) {
+    var listEl = document.getElementById('course-lesson-list');
+    var progEl = document.getElementById('course-progress');
+    if (!listEl) return;
+    var done = 0;
+    listEl.innerHTML = c.lessons.map(function (l) {
+      var learned = typeof l.i === 'number' && isLearned(l.i);
+      if (learned) done++;
+      /* 优先用构建期固化的 id 直达；缺 id 时退回 title+author 寻址（不编造） */
+      var href = typeof l.i === 'number'
+        ? 'study.html?id=' + l.i
+        : 'study.html?title=' + encodeURIComponent(l.t) + '&author=' + encodeURIComponent(l.a);
+      return '<li class="topic-poem-item">' +
+        '<a class="topic-poem-link' + (learned ? ' lesson-learned' : '') + '" href="' + href + '">' +
+        '<span class="topic-poem-title">' + esc(l.t) + '</span>' +
+        '<span class="topic-poem-author">' + esc(l.a) + ' · ' + esc(l.d) + '</span>' +
+        (learned ? '<span class="lesson-badge">已学</span>' : '') +
+        '</a></li>';
+    }).join('');
+    if (progEl) {
+      /* 进度只陈述事实（学过 = 在原文页点过打卡），done 为 0 时如实显示 0 */
+      progEl.textContent = '已学 ' + done + ' / ' + c.lessons.length +
+        ' 课（学过 = 在原文页点过「今日打卡」）';
+    }
+  }
+
+  function openCourse(c) {
+    var cards = document.getElementById('courses-section');
+    var topicsSec = document.getElementById('topics-section');
+    var detail = document.getElementById('course-detail');
+    if (!detail) return;
+    if (cards) cards.hidden = true;
+    if (topicsSec) topicsSec.hidden = true;
+    detail.hidden = false;
+
+    var titleEl = document.getElementById('course-detail-title');
+    var metaEl = document.getElementById('course-detail-meta');
+    if (titleEl) titleEl.textContent = c.name;
+    if (metaEl) {
+      /* 口径全写在脸上：数字全部来自 courses.js（构建期固化），前端不重算 */
+      metaEl.textContent = c.basis + ' · 入选篇目均有译文与赏析';
+    }
+    renderCourseLessons(c);
+
+    var main = document.getElementById('study-body');
+    if (main) main.hidden = true;
+    var head = document.getElementById('study-head-actions');
+    if (head) head.hidden = true;
+    var tEl = document.getElementById('study-title');
+    if (tEl) tEl.textContent = c.name;
+    var sEl = document.getElementById('study-subtitle');
+    if (sEl) sEl.textContent = '精品课程';
+    window.scrollTo(0, 0);
+  }
+
+  function bindCourseBack() {
+    var back = document.getElementById('course-back');
+    if (!back) return;
+    back.addEventListener('click', function () {
+      var cards = document.getElementById('courses-section');
+      var topicsSec = document.getElementById('topics-section');
+      var detail = document.getElementById('course-detail');
+      if (cards) cards.hidden = false;
+      /* 深链接 ?course= 直进时专题网格可能没渲染过：网格为空就不显示该区，
+       * 不摆一个空壳（宁缺不假） */
+      var topicGrid = document.getElementById('topic-grid');
+      if (topicsSec && topicGrid && topicGrid.childElementCount) topicsSec.hidden = false;
+      if (detail) detail.hidden = true;
+
+      var main = document.getElementById('study-body');
+      if (main) main.hidden = true;
+      var head = document.getElementById('study-head-actions');
+      if (head) head.hidden = true;
+      var tEl = document.getElementById('study-title');
+      if (tEl) tEl.textContent = '诗词课堂';
+      var sEl = document.getElementById('study-subtitle');
+      if (sEl) sEl.textContent = '';
+      window.scrollTo(0, 0);
+    });
+  }
+
   function initStudy() {
     var titleEl = document.getElementById('study-title');
     if (!titleEl) return;
 
     var params = new URLSearchParams(location.search);
     var id = parseInt(params.get('id'), 10);
+    var courseId = params.get('course');
     var hasPoemParam = params.has('id') || params.has('title');
 
-    /* 无诗参数 = 专题入口页：显示专题网格，隐藏六步流程 */
+    /* 入口页 = 精品课程 + 精编专题；?course=<id> 深链接则直接打开该门课。
+     * course 值未知时如实退回入口页（网格照常显示，不报错装死）。
+     * renderTopics/renderCourses 各只调用一次（内部会绑事件，调两次会重复绑定）。 */
     if (!hasPoemParam) {
-      if (renderTopics()) {
+      var courseHit = courseId ? findCourse(courseId) : null;
+      var showedTopics = renderTopics();
+      var showedCourses = renderCourses();
+      if (showedTopics || showedCourses) {
         bindTopicBack();
-        titleEl.textContent = '诗词课堂';
-        var sub = document.getElementById('study-subtitle');
-        if (sub) sub.textContent = '读原文 · 逐句理解 · 了解背景 · 理解名句 · 整体赏析 · 开始背诵';
+        bindCourseBack();
+        if (courseHit) {
+          openCourse(courseHit);
+        } else {
+          titleEl.textContent = '诗词课堂';
+          var sub = document.getElementById('study-subtitle');
+          if (sub) sub.textContent = '读原文 · 逐句理解 · 了解背景 · 理解名句 · 整体赏析 · 开始背诵';
+        }
         var body = document.getElementById('study-body');
         if (body) body.hidden = true;
         var headActions = document.getElementById('study-head-actions');
         if (headActions) headActions.hidden = true;
         return;
       }
-      /* topics.js 没加载出来：如实降级到默认诗，不显示空专题区 */
+      /* topics.js / courses.js 都没加载出来：如实降级到默认诗，不显示空入口区 */
     }
 
     var poem = findPoem(id);

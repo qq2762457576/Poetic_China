@@ -586,6 +586,9 @@ input, textarea { font: inherit; color: inherit; }
 
 .switch-row { display: flex; justify-content: center; gap: 6px; font-size: 13px; color: var(--ink-500); }
 .switch-row a { color: var(--cinnabar); font-weight: 500; }
+/* 「忘记密码」这类链状按钮：视觉是链接，语义是 button（键盘可达，PRD 第二十八条） */
+.linklike { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; color: var(--cinnabar); font-weight: 500; cursor: pointer; }
+.linklike:hover { text-decoration: underline; }
 
 /* ---------- 社区广场 ---------- */
 .page-body {
@@ -1180,6 +1183,23 @@ body[data-page="auth"] .tabbar { display: none; }
   color: var(--ink-900);
 }
 .topic-poem-author { font-size: 13px; color: var(--ink-400); white-space: nowrap; }
+
+/* 课次已学状态（复用打卡存储 shici_learned，只做视觉弱化 + 徽章，不改链接行为） */
+.topic-poem-link.lesson-learned .topic-poem-title { color: var(--ink-400); }
+.lesson-badge {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink-300);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#course-progress { margin: 0 0 10px; }
+@media (max-width: 768px) {
+  .lesson-badge { display: none; }
+}
 
 .btn--sm { padding: 6px 12px; font-size: 13px; }
 
