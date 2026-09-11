@@ -60,6 +60,73 @@
     return list;
   }
 
+  /* ---------- 每日学习记录（「我的」页学习趋势的数据来源） ----------
+   * 结构：{ "YYYY-MM-DD": 当天新学的篇数 }
+   *
+   * ⚠️ 为什么必须单独存一份，而不是从 shici_learned 反推：
+   *    shici_learned 是 id 数组，只有「学过哪些」，没有「什么时候学的」。
+   *    没有时间维度就画不出趋势 —— 任何按日期分布都只能是编的。
+   *    所以打卡那一刻必须落一条真实日期，这是趋势图唯一的数据来源。
+   *
+   * 只记「新学」不记重复打卡：同一首反复点是同一件事，不能虚增曲线。
+   * 保留最近 DAILY_MAX 天，防止本地存储无限膨胀。 */
+  var DAILY_KEY = 'shici_daily';
+  var DAILY_MAX = 400;
+
+  function loadDaily() {
+    var d = store(DAILY_KEY, null);
+    return (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+  }
+  function saveDaily(map) {
+    /* 超出上限时按日期倒序裁剪，保留最近的 */
+    var keys = Object.keys(map).sort();
+    if (keys.length > DAILY_MAX) {
+      var trimmed = {};
+      keys.slice(-DAILY_MAX).forEach(function (k) { trimmed[k] = map[k]; });
+      map = trimmed;
+    }
+    saveStore(DAILY_KEY, map);
+  }
+  /* 本地日期键（不用 toISOString：那是 UTC，东八区晚上会记成前一天） */
+  function dayKey(ts) {
+    var d = ts ? new Date(ts) : new Date();
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+  }
+  /* 记一笔「今天新学了 n 篇」 */
+  function markDailyToday(n) {
+    var map = loadDaily();
+    var k = dayKey();
+    map[k] = (map[k] || 0) + (n || 1);
+    saveDaily(map);
+  }
+  /* 取最近 days 天的序列（含今天，按日期正序），补零到满长度 —— 
+   * 没学的那天就是 0，这是真实值，不是编的。 */
+  function getDailySeries(days) {
+    var map = loadDaily();
+    var out = [];
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (var i = days - 1; i >= 0; i--) {
+      var d = new Date(today.getTime() - i * 86400000);
+      var k = dayKey(d.getTime());
+      out.push({ date: k, count: map[k] || 0 });
+    }
+    return out;
+  }
+  /* 连续学习天数：从今天（或昨天）往前数，断一天即止。
+   * 今天还没学不算断 —— 一天才刚开始，不能因为还没打卡就把连续归零。 */
+  function dailyStreak(s) {
+    var seq = s || getDailySeries(DAILY_MAX);
+    var i = seq.length - 1;
+    if (i >= 0 && seq[i].count === 0) i--;   /* 今天未学 → 从昨天起算 */
+    var n = 0;
+    for (; i >= 0; i--) {
+      if (seq[i].count > 0) n++; else break;
+    }
+    return n;
+  }
+
   /* 是否处于云端模式（未登录也算云端模式，只是不推送） */
   function cloudMode() {
     return !!(window.Cloud && window.Cloud.mode && window.Cloud.mode() === 'cloud');
@@ -324,7 +391,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911l';
+  var DATA_V = '20260911o';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -816,6 +883,11 @@
     setText('me-side-login', name ? (myEmail() || '本地账号') : '未登录');
     setText('me-side-store', loggedIn() ? '云端同步' : '本机');
 
+    /* --- 3.5 学习趋势：近 14 天每日学习篇数 ---
+     * 数据全部来自 shici_daily（打卡时落的真实日期），没有记录就是空状态。
+     * 反过来说：这里显示的每一根柱子，都对应那天真的点过一次打卡。 */
+    renderMeTrend();
+
     /* --- 4. 我的分享：从全站信息流里筛出自己发布的 --- */
     var postsBox = document.getElementById('me-posts');
     if (postsBox && name) {
@@ -846,6 +918,89 @@
     if (outBtn) outBtn.addEventListener('click', function () {
       Auth.logout(function () { location.reload(); });
     });
+  }
+
+  /* ---------- 学习趋势图（「我的」页） ----------
+   * 纯内联 SVG 柱状图，不引外部图表库（站点是静态页，多一个依赖就多一份挂掉的风险）。
+   * 口径：横轴近 14 天、纵轴每天新学篇数；数值直接取自 shici_daily，不做任何估算。 */
+  function renderMeTrend() {
+    var box = document.getElementById('me-trend-chart');
+    if (!box) return;   /* 不是「我的」页 */
+
+    var DAYS = 14;
+    var seq = getDailySeries(DAYS);
+    var emptyEl = document.getElementById('me-trend-empty');
+    var subEl = document.getElementById('me-trend-sub');
+
+    var sum = seq.reduce(function (a, d) { return a + d.count; }, 0);
+    setNum('me-trend-streak', dailyStreak(getDailySeries(DAILY_MAX)));
+    setNum('me-trend-sum', sum);
+
+    /* 一条记录都没有 → 显示空状态，不画图。
+     * 注意判断的是「全部为 0」而不是「数组为空」：补零后的序列永远有 14 项。 */
+    if (!sum && !seq.some(function (d) { return d.count > 0; })) {
+      box.hidden = true;
+      box.innerHTML = '';
+      if (emptyEl) emptyEl.hidden = false;
+      if (subEl) subEl.textContent = '最近 14 天的学习情况';
+      return;
+    }
+    box.hidden = false;
+    if (emptyEl) emptyEl.hidden = true;
+
+    /* 柱高按最大值归一 —— 纵轴上限取真实峰值，不设虚高的固定刻度 */
+    var max = Math.max.apply(null, seq.map(function (d) { return d.count; })) || 1;
+    var W = 560, H = 120, PAD_B = 22, PAD_T = 8;
+    var n = seq.length;
+    var gap = 6;
+    var bw = (W - gap * (n - 1)) / n;
+    var plotH = H - PAD_B - PAD_T;
+    /* 坐标一律取整：SVG 里的 34.42857142857143 既没必要也把 DOM 撑得难看。
+     * 柱宽受浮点误差影响存在 ±1px 抖动，直接 round 掉。 */
+    var r = function (v) { return Math.round(v * 100) / 100; };
+    bw = r(bw);
+
+    var todayKey = dayKey();
+    var bars = seq.map(function (d, i) {
+      var x = r(i * (bw + gap));
+      var h = d.count > 0 ? Math.max(3, Math.round(d.count / max * plotH)) : 0;
+      var y = PAD_T + plotH - h;
+      var isToday = d.date === todayKey;
+      var md = d.date.slice(5).replace('-', '/');   /* MM/DD，省宽度 */
+      /* 柱子本身带 <title>，鼠标悬停即可看准确数值，不必再画坐标轴刻度 */
+      return (
+        '<g class="me-bar-group">' +
+        '<title>' + esc(d.date) + '：' + d.count + ' 篇</title>' +
+        (h > 0
+          ? '<rect class="me-bar' + (isToday ? ' me-bar--today' : '') + '" x="' + x +
+            '" y="' + y + '" width="' + bw + '" height="' + h + '" rx="3"></rect>'
+          : '<rect class="me-bar-slot" x="' + x + '" y="' + (PAD_T + plotH - 2) +
+            '" width="' + bw + '" height="2" rx="1"></rect>') +
+        /* 峰值柱上方标数字，其余靠悬停看，避免标签互相压字 */
+        (d.count === max && d.count > 0
+          ? '<text class="me-bar-num" x="' + r(x + bw / 2) + '" y="' + (y - 4) +
+            '" text-anchor="middle">' + d.count + '</text>'
+          : '') +
+        /* 只标首、末两天，中间省略 —— 14 个日期全写会糊成一片 */
+        ((i === 0 || i === n - 1)
+          ? '<text class="me-bar-date" x="' + r(x + bw / 2) + '" y="' + (H - 6) +
+            '" text-anchor="middle">' + md + '</text>'
+          : '') +
+        '</g>'
+      );
+    }).join('');
+
+    /* ⚠️ 不能用 preserveAspectRatio="none"：图里有文字，横向拉伸会把字压扁变形。
+     * 用默认的等比缩放 + CSS 控制高度，宽屏下 SVG 居中、两侧留白即可。 */
+    box.innerHTML =
+      '<svg class="me-trend-svg" viewBox="0 0 ' + W + ' ' + H + '" ' +
+      'role="img" ' +
+      'aria-label="最近 14 天每日学习篇数柱状图，合计 ' + sum + ' 篇">' +
+      bars + '</svg>';
+
+    if (subEl) {
+      subEl.textContent = '最近 14 天新学 ' + sum + ' 篇 · 峰值 ' + max + ' 篇/天';
+    }
   }
 
   /* 「我的」页两个小工具：找不到元素就静默跳过，不抛错 */
@@ -2438,6 +2593,9 @@
         if (!isLearned(poem.id)) {
           learnedIds.push(poem.id);
           saveStore('shici_learned', learnedIds);
+          /* 记一笔到今天的趋势记录 —— 必须在「新学」分支里，
+           * 重复点同一首不计数，否则曲线会被重复打卡虚增。 */
+          markDailyToday(1);
           /* 已登录则同步上云，失败不影响本地记录 */
           if (loggedIn()) window.Cloud.learned.add(poem.id);
         }

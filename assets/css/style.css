@@ -1907,6 +1907,44 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   font-size: 12px; color: var(--ink-400, #9a938a); margin-top: 8px; line-height: 1.6;
 }
 
+/* --- 学习趋势（近 14 天柱状图，纯内联 SVG） --- */
+.me-trend { padding: 22px 24px 18px; margin-bottom: 30px; }
+.me-trend-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+.me-trend-head .section-title {
+  font-size: 17px; font-weight: 600; margin: 0 0 6px;
+  color: var(--ink-800, #33302b);
+}
+.me-trend-sub { font-size: 12px; color: var(--ink-400, #9a938a); margin: 0; }
+.me-trend-kpis { display: flex; gap: 28px; flex: none; }
+.me-trend-kpi { display: flex; flex-direction: column; align-items: flex-end; }
+.me-trend-kpi-num {
+  font-family: var(--font-serif); font-size: 24px; font-weight: 600;
+  color: var(--cinnabar, #9c3b2e); line-height: 1.2;
+}
+.me-trend-kpi-label { font-size: 12px; color: var(--ink-400, #9a938a); margin-top: 2px; }
+
+.me-trend-chart { margin-top: 18px; }
+.me-trend-chart[hidden] { display: none; }
+/* 等比缩放：高度由 viewBox 比例（560:120）决定，width 撑满、height auto。
+ * 不能写死 height —— 那会让 SVG 非等比拉伸，柱子和文字都会变形。 */
+.me-trend-svg { display: block; width: 100%; height: auto; max-height: 160px; }
+.me-bar { fill: var(--cinnabar, #9c3b2e); opacity: .78; transition: opacity .2s ease; }
+.me-bar-group:hover .me-bar { opacity: 1; }
+.me-bar--today { opacity: 1; }
+/* 当天为 0 时留一条浅色底线，让「这天存在但没学」也能看出来 */
+.me-bar-slot { fill: var(--ink-100, #e8e2d6); }
+.me-bar-num {
+  font-size: 11px; font-weight: 600; fill: var(--cinnabar, #9c3b2e);
+  font-family: var(--font-sans);
+}
+.me-bar-date { font-size: 10px; fill: var(--ink-400, #9a938a); font-family: var(--font-sans); }
+
+.me-trend-empty { padding: 20px 0 4px; }
+.me-trend-empty[hidden] { display: none; }
+
 /* --- 两栏布局 --- */
 .page-body--me { grid-template-columns: minmax(0, 1fr) 320px !important; }
 .page-body--me .section-title {
@@ -1944,6 +1982,11 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   .me-guest-card .btn { width: 100%; }
   .me-account-row { flex-wrap: wrap; }
   .page-body--me .section-title { font-size: 16px; }
+  .me-trend { padding: 18px 16px 14px; }
+  .me-trend-head { gap: 12px; }
+  .me-trend-kpis { gap: 20px; }
+  .me-trend-kpi-num { font-size: 20px; }
+  .me-trend-svg { max-height: 110px; }
 }
 
 

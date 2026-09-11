@@ -17,7 +17,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910r" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260911o" />
 </head>
 <body data-page="me" data-nav-account="me">
 
@@ -84,6 +84,34 @@
         </a>
       </section>
 
+      <!-- ============ 学习趋势：近 14 天每日学习篇数 ============ -->
+      <section class="card me-trend" id="me-trend">
+        <div class="me-trend-head">
+          <div>
+            <h3 class="section-title">学习趋势</h3>
+            <p class="me-trend-sub" id="me-trend-sub">最近 14 天的学习情况</p>
+          </div>
+          <div class="me-trend-kpis">
+            <div class="me-trend-kpi">
+              <span class="me-trend-kpi-num" id="me-trend-streak">0</span>
+              <span class="me-trend-kpi-label">连续学习（天）</span>
+            </div>
+            <div class="me-trend-kpi">
+              <span class="me-trend-kpi-num" id="me-trend-sum">0</span>
+              <span class="me-trend-kpi-label">近 14 天（篇）</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 有数据时显示柱状图；无数据时显示空状态（由 initMe 切换，绝不放假柱子） -->
+        <div class="me-trend-chart" id="me-trend-chart" hidden></div>
+
+        <div class="me-trend-empty empty-state" id="me-trend-empty" hidden>
+          <p style="margin:0 0 14px;">还没有学习记录。去课堂页读一首，点「今日打卡」就会记在这里。</p>
+          <a class="btn btn--primary" href="study.html">去读一首</a>
+        </div>
+      </section>
+
       <!-- ============ 主体：左内容 + 右侧栏 ============ -->
       <div class="page-body page-body--me">
 
@@ -145,13 +173,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260911l" defer></script>
-  <script src="assets/data/aliases.js?v=20260911l" defer></script>
-  <script src="assets/data/index-meta.js?v=20260911l" defer></script>
-  <script src="assets/js/config.js?v=20260911l" defer></script>
-  <script src="assets/js/cloud.js?v=20260911l" defer></script>
-  <script src="assets/js/site-nav.js?v=20260911l" defer></script>
-  <script src="assets/js/main.js?v=20260911l" defer></script>
+  <script src="assets/data/site-stats.js?v=20260911o" defer></script>
+  <script src="assets/data/aliases.js?v=20260911o" defer></script>
+  <script src="assets/data/index-meta.js?v=20260911o" defer></script>
+  <script src="assets/js/config.js?v=20260911o" defer></script>
+  <script src="assets/js/cloud.js?v=20260911o" defer></script>
+  <script src="assets/js/site-nav.js?v=20260911o" defer></script>
+  <script src="assets/js/main.js?v=20260911o" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>
