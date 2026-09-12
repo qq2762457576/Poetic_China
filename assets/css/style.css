@@ -25,6 +25,13 @@
   --cinnabar-dark: #812e28;
   --white: #fffdf8;
 
+  /* 阴影 —— 全部墨色调（rgba 38,35,31 系），绝不用纯黑；
+   * xs 贴纸微浮 / sm 卡片常驻 / md 可点卡悬停 / btn 朱砂投影 */
+  --shadow-xs: 0 1px 2px rgba(38, 35, 31, 0.04);
+  --shadow-sm: 0 1px 2px rgba(38, 35, 31, 0.04), 0 6px 18px rgba(38, 35, 31, 0.05);
+  --shadow-md: 0 2px 4px rgba(38, 35, 31, 0.05), 0 14px 32px rgba(38, 35, 31, 0.10);
+  --shadow-btn: 0 1px 2px rgba(129, 46, 40, 0.30), 0 2px 8px rgba(38, 35, 31, 0.12);
+
   /* 字体 */
   --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong,
     "SimSun", "STZhongsong", serif;
@@ -98,13 +105,41 @@ input, textarea { font: inherit; color: inherit; }
   padding: 13px 28px;
   border-radius: var(--radius);
   font-size: 15px;
-  transition: background .2s ease, color .2s ease, border-color .2s ease;
+  cursor: pointer;
+  /* transform/box-shadow 进 transition：hover 上浮与 active 下压才有「按键感」 */
+  transition: background .2s ease, color .2s ease, border-color .2s ease,
+    box-shadow .2s ease, transform .15s ease;
   white-space: nowrap;
 }
-.btn--primary { background: var(--cinnabar); color: var(--card); }
-.btn--primary:hover { background: var(--cinnabar-dark); }
-.btn--ghost { background: var(--card); border: 1px solid #d6cbb6; color: var(--ink-600); }
-.btn--ghost:hover { border-color: var(--cinnabar); color: var(--cinnabar); }
+.btn:active { transform: translateY(1px); }
+.btn--primary {
+  background: var(--cinnabar);
+  color: var(--card);
+  box-shadow: var(--shadow-btn);
+}
+.btn--primary:hover {
+  background: var(--cinnabar-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(129, 46, 40, 0.30), 0 2px 4px rgba(38, 35, 31, 0.10);
+}
+.btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(129, 46, 40, 0.28);
+}
+.btn--ghost {
+  background: var(--card);
+  border: 1px solid rgba(38, 35, 31, 0.16);   /* 墨线（旧硬编码 #d6cbb6） */
+  color: var(--ink-600);
+  box-shadow: var(--shadow-xs);
+}
+.btn--ghost:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: rgba(166, 61, 50, 0.05);        /* 一层极淡朱砂，hover 更有回应 */
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(38, 35, 31, 0.08);
+}
+.btn--ghost:active { transform: translateY(0); box-shadow: none; }
 .btn--lg { padding: 16px 38px; font-size: 16px; }
 .btn--block { width: 100%; padding: 15px 20px; }
 
@@ -115,6 +150,8 @@ input, textarea { font: inherit; color: inherit; }
   padding: 6px 13px;
   border-radius: 2px;
   background: var(--chip);
+  /* 印章感：一圈极细墨线，底色不至于糊进纸面 */
+  box-shadow: inset 0 0 0 1px rgba(38, 35, 31, 0.07);
   font-size: 13px;
   color: var(--ink-600);
   white-space: nowrap;
@@ -123,8 +160,10 @@ input, textarea { font: inherit; color: inherit; }
 
 .card {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);   /* 卡片自身有影后边框退半档，墨线留给分隔 */
   border-radius: var(--radius);
+  /* 纸厚度：顶部 1px 内亮边（纸沿受光）+ 落在纸面上的极轻双影 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), var(--shadow-sm);
 }
 
 .divider { height: 1px; background: var(--line); }
@@ -197,8 +236,10 @@ input, textarea { font: inherit; color: inherit; }
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(243, 238, 228, .94);
+  background: rgba(246, 241, 231, .94);   /* 统一纸色（原桌面/移动两处色值不一致） */
   backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line-soft);
+  box-shadow: 0 2px 12px rgba(38, 35, 31, 0.04);
 }
 
 .header-inner {
@@ -441,7 +482,7 @@ input, textarea { font: inherit; color: inherit; }
   padding: 26px 28px;
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: 0 18px 40px rgba(41, 34, 26, .18);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -522,8 +563,16 @@ input, textarea { font: inherit; color: inherit; }
   background: #efe9dc;
   font-size: 14px;
   color: var(--ink-600);
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease;
 }
-.tab--active { background: var(--cinnabar); color: var(--card); font-weight: 500; }
+.tab:not(.tab--active):hover { background: #e7dfcd; color: var(--ink-800); }
+.tab--active {
+  background: var(--cinnabar);
+  color: var(--card);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(129, 46, 40, 0.28);   /* 激活标签微微浮起 */
+}
 
 .preview-box {
   padding: 24px 26px;
@@ -890,7 +939,7 @@ input, textarea { font: inherit; color: inherit; }
   width: 46px;
   height: 46px;
   flex: none;
-  border: 1px solid #d6cbb6;
+  border: 1px solid rgba(38, 35, 31, 0.14);
   border-radius: var(--radius);
   background: var(--sand);
   display: flex;
@@ -951,6 +1000,7 @@ input, textarea { font: inherit; color: inherit; }
   padding: 10px 12px calc(10px + var(--safe-bottom));
   background: var(--card);
   border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(38, 35, 31, 0.06);
 }
 .tabbar-inner {
   display: flex;
@@ -1244,15 +1294,16 @@ body[data-page="auth"] .tabbar { display: none; }
   text-align: left;
   padding: 20px 22px;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .topic-card:hover {
   border-color: var(--ink-300);
-  box-shadow: 0 4px 16px rgba(60, 50, 40, 0.07);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 .topic-card:focus-visible {
@@ -1428,9 +1479,17 @@ body[data-page="auth"] .tabbar { display: none; }
   font-size: 18px;
   color: var(--ink-700);
   cursor: pointer;
-  transition: border-color .2s ease, background .2s ease, color .2s ease;
+  box-shadow: var(--shadow-xs);
+  transition: border-color .2s ease, background .2s ease, color .2s ease,
+    box-shadow .2s ease, transform .15s ease;
 }
-.option:hover { border-color: #cdbf9f; }
+.option:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(38, 35, 31, 0.08);
+}
+.option:active { transform: translateY(0); box-shadow: var(--shadow-xs); }
 .option .mark { font-family: var(--font-sans); font-weight: 700; font-size: 16px; }
 .option.is-correct { border-color: var(--cinnabar); background: var(--sand); color: var(--cinnabar); font-weight: 600; }
 .option.is-wrong { border-color: #c9a09a; background: #fbf1ef; color: #a4503f; }
@@ -1609,13 +1668,13 @@ body[data-page="auth"] .tabbar { display: none; }
 }
 .board-block .featured-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 a.poem-mini { text-decoration: none; color: inherit; transition: transform .35s ease, box-shadow .35s ease; }
-a.poem-mini:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(34, 30, 26, .10); }
+a.poem-mini:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
 a.poem-mini h3 { font-size: 20px; margin: 0; }
 .poem-lines { font-family: 'Noto Serif SC', serif; color: var(--ink-700, #4A423B); line-height: 30px; margin: 0; }
 
 /* ---------- 诗词库行可点击 + 全文 ---------- */
 .poem-row--link { cursor: pointer; transition: transform .25s ease, box-shadow .25s ease; }
-.poem-row--link:hover { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(34, 30, 26, .10); }
+.poem-row--link:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .poem-row-line { font-family: 'Noto Serif SC', serif; line-height: 28px; }
 .poem-row-more { color: var(--cinnabar); font-size: 13px; }
 
@@ -2150,6 +2209,7 @@ a.account-name:hover { color: var(--cinnabar, #a63d32); }
   background: var(--card, #fffdf8);
   border: 1px solid var(--line-soft, rgba(38,35,31,0.08));
   border-radius: var(--radius, 6px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), var(--shadow-sm);
   display: block;
 }
 .me-profile-row {
