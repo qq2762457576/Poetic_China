@@ -128,6 +128,8 @@
     var id = parseInt(params.get('id'), 10);
     var courseId = params.get('course');
     var hasPoemParam = params.has('id') || params.has('title');
+    /* V3 §13：默认阅读视图；?mode=steps 直进六步学习流程 */
+    var stepsMode = params.get('mode') === 'steps';
 
     /* 入口页 = 精品课程 + 精编专题；?course=<id> 深链接则直接打开该门课。
      * course 值未知时如实退回入口页（网格照常显示，不报错装死）。
@@ -160,7 +162,7 @@
       /* 索引分片尚未载入：先下载该片再渲染，保证深链接可达全库任意一首 */
       titleEl.textContent = '载入中…';
       IndexStore.poem(id, function (p2) {
-        initStudyWith(p2 || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+        initStudyWith(p2 || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0], stepsMode);
       });
       return;
     }
@@ -169,20 +171,33 @@
     var qTitle = params.get('title'), qAuthor = params.get('author');
     if (!poem && qTitle) {
       poem = findPoemLoose(qTitle, qAuthor);
-      if (poem) { initStudyWith(poem); return; }
+      if (poem) { initStudyWith(poem, stepsMode); return; }
       titleEl.textContent = '载入中…';
       IndexStore.ensureAll(null, function () {
-        initStudyWith(findPoemLoose(qTitle, qAuthor) || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+        initStudyWith(findPoemLoose(qTitle, qAuthor) || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0], stepsMode);
       });
       return;
     }
     if (!poem) poem = findByTitleAuthor('登高', '杜甫') || loadedPoems()[0];
-    initStudyWith(poem);
+    initStudyWith(poem, stepsMode);
   }
 
-  function initStudyWith(poem) {
+  function initStudyWith(poem, stepsMode) {
     var titleEl = document.getElementById('study-title');
     if (!poem || !titleEl) return;
+
+    /* V3 §13/§14：默认阅读优先视图 —— 有 reading-view 区块且未指定 ?mode=steps。
+     * 旧六步流代码路径保持原样，只是默认藏起来；运行期切换见 renderReadingView。 */
+    var useReading = !!document.getElementById('reading-view') && !stepsMode;
+    var rdView = document.getElementById('reading-view');
+    var pageHead = document.querySelector('.page-head');
+    var bodyEl = document.getElementById('study-body');
+    if (useReading) {
+      if (pageHead) pageHead.hidden = true;
+      if (bodyEl) bodyEl.hidden = true;
+    } else if (rdView) {
+      rdView.hidden = true;
+    }
 
     /* 头部：索引数据，立即渲染 */
     titleEl.textContent = poem.title;
@@ -330,5 +345,9 @@
         '<div class="poet-name serif">' + esc(poem.author) + '</div>' +
         '<div class="poet-dynasty">' + esc(poem.dynasty) + '代 · 库中收录 ' + count + ' 首</div>';
     }
+
+    /* 阅读优先视图（V3 §13/§14）：头部与接线；正文/面板由 renderStudyText →
+     * renderReadingContent 灌入（两套视图共用一次取数）。 */
+    renderReadingView(poem, useReading);
   }
 

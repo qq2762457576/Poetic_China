@@ -295,14 +295,39 @@ input, textarea { font: inherit; color: inherit; }
 .mobile-menu a:last-child { border-bottom: 0; }
 .mobile-menu a.is-active { color: var(--cinnabar); font-weight: 600; }
 
-/* ---------- Hero ---------- */
-.hero { padding: 72px 0 84px; }
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 600px) minmax(0, 1fr);
-  gap: 64px;
+/* ---------- Hero（V3 模拟图：水墨通栏铺底、文字浮左） ---------- */
+.hero { position: relative; overflow: hidden; }
+.hero-bg {
+  position: absolute;
+  top: 0; right: 0;
+  width: min(72%, 980px);
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  /* 左缘渐隐进宣纸底色，画与纸融为一体 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 45%);
+          mask-image: linear-gradient(to right, transparent 0%, #000 45%);
+  opacity: .92;
+  pointer-events: none;
+}
+/* 底缘也过渡一层纸色，衔接下一区块 */
+.hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 90px;
+  background: linear-gradient(to bottom, rgba(246, 241, 231, 0), var(--paper));
+  pointer-events: none;
+  z-index: 1;
+}
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  min-height: 540px;
+  display: flex;
   align-items: center;
+  padding-top: 48px;
+  padding-bottom: 64px;
 }
 
 .hero-copy { display: flex; flex-direction: column; gap: 30px; }
@@ -363,12 +388,49 @@ input, textarea { font: inherit; color: inherit; }
 
 .trust-line { font-size: 13px; color: var(--ink-400); }
 
-.hero-art { position: relative; min-height: 560px; display: flex; justify-content: center; }
-.hero-art img {
-  width: 512px;
-  height: 512px;
-  object-fit: cover;
-  border-radius: 4px;
+/* ---------- 功能快捷入口行（V3 模拟图：五项图标 + 标签 + 副注） ---------- */
+.quick-nav {
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 248, .6);
+}
+.quick-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 22px 0;
+}
+.quick-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  text-align: center;
+  border-left: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  transition: background .2s ease, transform .2s ease;
+}
+.quick-item:first-child { border-left: 0; }
+.quick-item:hover { background: rgba(166, 61, 50, .05); transform: translateY(-2px); }
+.quick-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(166, 61, 50, .08);
+  color: var(--cinnabar);
+}
+.quick-icon svg { width: 23px; height: 23px; }
+.quick-label { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--ink-900); }
+.quick-desc { font-size: 12px; color: var(--ink-400); }
+@media (max-width: 768px) {
+  .quick-row { flex-wrap: wrap; gap: 4px; padding: 14px 0; }
+  .quick-item { flex: 1 1 33%; border-left: 0; }
+  .quick-desc { display: none; }
+  .quick-icon { width: 38px; height: 38px; }
 }
 
 .floating-card {
@@ -908,8 +970,6 @@ input, textarea { font: inherit; color: inherit; }
 /* ---------- 响应式：平板 ---------- */
 @media (max-width: 1180px) {
   .container { padding: 0 40px; }
-  .hero-grid { grid-template-columns: 1fr; gap: 40px; }
-  .hero-art { min-height: auto; justify-content: flex-start; }
   .floating-card { position: static; width: 100%; max-width: 420px; box-shadow: none; border: 1px solid var(--line); }
   .featured-grid, .bento { grid-template-columns: 1fr; }
   .page-body { grid-template-columns: 220px minmax(0, 1fr); }
@@ -934,14 +994,14 @@ input, textarea { font: inherit; color: inherit; }
   .tabbar { display: block; }
 
   .header-inner { height: 56px; gap: 12px; }
-  .site-header { background: rgba(243, 238, 228, .96); }
+  .site-header { background: rgba(246, 241, 231, .96); }
   .header-actions .btn { padding: 8px 16px; font-size: 14px; }
 
-  .hero { padding: 24px 0 32px; }
+  .hero-inner { min-height: 0; padding-top: 20px; padding-bottom: 44px; }
+  .hero-bg { width: 100%; opacity: .4; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 55%); mask-image: linear-gradient(to bottom, transparent 0%, #000 55%); }
   .hero-copy { gap: 16px; }
   .hero-title { font-size: 33px; line-height: 48px; }
   .hero-sub { font-size: 14px; line-height: 26px; }
-  .hero-art img { width: 100%; height: auto; aspect-ratio: 1 / 1; }
 
   .section { padding: 26px 0 32px; }
   .section-head { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
@@ -1486,11 +1546,15 @@ body[data-page="auth"] .tabbar { display: none; }
 }
 .hero-img { width: 100%; border-radius: 8px; display: block; }
 .hero-img--float { animation: floatY 7s ease-in-out infinite; }
-.hero-art { position: relative; }
 .hero-seal {
   position: absolute;
-  right: -18px; bottom: -18px;
+  right: 7%;
+  bottom: 17%;
+  z-index: 2;
   animation: sealPulse 3.4s ease-in-out infinite;
+}
+@media (max-width: 768px) {
+  .hero-seal { right: 24px; bottom: 56px; }
 }
 
 /* ---------- 每日推荐 ---------- */
@@ -1693,6 +1757,100 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 
 /* 挑战页：玩法卡竖排适配 */
 .challenge-modes .mode-card { width: 100%; }
+
+/* ============================================
+ * 详情页：阅读优先视图（V3 §13/§14）
+ * --------------------------------------------
+ * 默认进入「读」的状态：单列居中、大字正文、注/译/赏/作者/背景五标签。
+ * 六步学习流程保留，经「开始系统学习」进入 —— 两套视图共用同一份内容数据。
+ * ============================================ */
+.reading-view {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 0 12px;
+}
+.rd-head {
+  text-align: center;
+  margin-bottom: 26px;
+}
+.rd-meta {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: var(--ink-300, #91897d);
+  margin: 0 0 12px;
+}
+.rd-title {
+  font-size: 34px;
+  line-height: 1.3;
+  color: var(--ink-900, #26231f);
+  margin: 0 0 12px;
+}
+.rd-author {
+  color: var(--ink-500, #686157);
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+.rd-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.rd-poem { margin-bottom: 26px; }
+.rd-verses { text-align: center; }
+.rd-verse {
+  font-size: 19px;
+  line-height: 2.15;
+  letter-spacing: 1px;
+  color: var(--ink-800, #332e28);
+  margin: 4px 0;
+}
+.rd-tabs { justify-content: center; margin-bottom: 14px; }
+.rd-panels {
+  padding: 28px 32px;
+  min-height: 150px;
+}
+.rd-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+.rd-related { margin-top: 36px; }
+.rd-related-title {
+  font-size: 16px;
+  color: var(--ink-900, #26231f);
+  margin: 0 0 12px;
+}
+@media (max-width: 640px) {
+  .rd-title { font-size: 26px; }
+  .rd-verse { font-size: 17px; }
+  .rd-panels { padding: 20px 18px; }
+}
+
+/* ============================================
+ * 挑战页：答题区上方横向关卡进度（V3 §22）
+ * --------------------------------------------
+ * 一格一题，与左栏「本轮进度」同一口径：
+ * 未答 = 沙色 · 当前 = 朱砂描边 · 已答 = 朱砂实色。
+ * ============================================ */
+.quiz-levels {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.lv-seg {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sand, #f1ead9);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.lv-seg.is-done { background: var(--cinnabar, #a63d32); opacity: 0.85; }
+.lv-seg.is-current {
+  background: var(--cinnabar, #a63d32);
+  box-shadow: 0 0 0 3px rgba(166, 61, 50, 0.15);
+}
 
 /* ============================================
  * 键盘可访问性：焦点可见（PRD 第二十八条）
@@ -1984,6 +2142,34 @@ a.account-name:hover { color: var(--cinnabar, #a63d32); }
   margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink-500, #7a746a);
 }
 .me-guest-card .btn { flex: none; }
+
+/* --- 资料头卡（V3 §26）：头像 + 昵称 + 模式徽章，登录/未登录共用 --- */
+.me-profile-head {
+  padding: 30px 32px;
+  margin-bottom: 22px;
+  background: var(--card, #fffdf8);
+  border: 1px solid var(--line-soft, rgba(38,35,31,0.08));
+  border-radius: var(--radius, 6px);
+  display: block;
+}
+.me-profile-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+}
+.me-profile-id { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.me-profile-text { min-width: 0; }
+.me-profile-text .page-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-family: var(--font-serif);
+}
+.me-profile-text .page-subtitle { margin: 0; line-height: 1.7; }
+.me-profile-ops { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.me-profile-head .me-account-tip { margin: 12px 0 0; }
+@media (max-width: 640px) {
+  .me-profile-head { padding: 20px; }
+  .me-profile-row { flex-direction: column; align-items: flex-start; gap: 14px; }
+}
 
 /* --- 账号卡 --- */
 .me-account-card { padding: 24px 28px; margin-bottom: 22px; }

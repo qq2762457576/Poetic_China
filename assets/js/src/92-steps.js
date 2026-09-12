@@ -284,6 +284,12 @@
       renderPickLines(pickList, lines, hints, poem);
     }
     if (famousPanel) renderPickedFamous(famousPanel, poem);
+
+    /* 阅读优先视图（V3 §13/§14）：正文与注译此刻均已就绪，
+     * 顺手把阅读视图的内容区也灌上 —— 两套视图共用一次取数，无需用户再等。 */
+    if (typeof renderReadingContent === 'function') {
+      renderReadingContent(poem, curated, extra, lines);
+    }
   }
 
   /* 第四步的点选区：列出全篇句子，标出「手册推荐 / 赏析引用」的提示位。*/

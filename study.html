@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260912c" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912d" />
 </head>
 <body data-page="class">
 
@@ -55,6 +55,52 @@
             <button class="btn btn--ghost" id="fav-btn" type="button">收藏</button>
             <a class="btn btn--primary" href="challenge.html">去挑战</a>
           </div>
+        </div>
+      </section>
+
+      <!-- ============ 阅读优先视图（默认，V3 §13/§14） ============
+           ?id / ?title 进入时展示：居中标题 + 大字正文 + 注/译/赏/作者/背景五标签。
+           六步学习流程保留，经「开始系统学习」（?mode=steps 亦可）进入。 -->
+      <section class="reading-view" id="reading-view" hidden>
+        <div class="rd-head">
+          <p class="rd-meta" id="rd-meta"></p>
+          <h2 class="rd-title serif" id="rd-title"></h2>
+          <p class="rd-author" id="rd-author"></p>
+          <div class="rd-actions">
+            <button class="btn btn--ghost" id="rd-fav" type="button">收藏</button>
+            <button class="btn btn--ghost" id="rd-checkin" type="button">今日打卡</button>
+            <a class="btn btn--ghost" id="rd-challenge" href="challenge.html">去挑战</a>
+            <button class="btn btn--primary" id="rd-steps" type="button">开始系统学习</button>
+          </div>
+        </div>
+
+        <div class="card rd-poem">
+          <div class="rd-verses serif" id="rd-verses"><div class="empty-state">正文载入中…</div></div>
+        </div>
+
+        <div class="tab-row rd-tabs" id="rd-tabs">
+          <span class="tab tab--active" data-rd-tab="notes">注释</span>
+          <span class="tab" data-rd-tab="translation">译文</span>
+          <span class="tab" data-rd-tab="appreciation">赏析</span>
+          <span class="tab" data-rd-tab="poet">作者</span>
+          <span class="tab" data-rd-tab="background">背景</span>
+        </div>
+        <div class="card rd-panels">
+          <div data-rd-panel="notes" id="rd-panel-notes"></div>
+          <div data-rd-panel="translation" id="rd-panel-translation" hidden></div>
+          <div data-rd-panel="appreciation" id="rd-panel-appreciation" hidden></div>
+          <div data-rd-panel="poet" id="rd-panel-poet" hidden></div>
+          <div data-rd-panel="background" id="rd-panel-background" hidden></div>
+        </div>
+
+        <div class="rd-related">
+          <h3 class="rd-related-title">同题材推荐</h3>
+          <div id="rd-related" class="related-list"></div>
+        </div>
+
+        <div class="rd-footer">
+          <a class="more-btn" id="rd-prev" href="study.html">← 上一首</a>
+          <a class="more-btn" id="rd-next" href="study.html">下一首 →</a>
         </div>
       </section>
 
@@ -247,19 +293,19 @@
 
 
 
-  <script src="assets/data/site-stats.js?v=20260912c" defer></script>
-  <script src="assets/data/aliases.js?v=20260912c" defer></script>
-  <script src="assets/data/index-meta.js?v=20260912c" defer></script>
-  <script src="assets/data/topics.js?v=20260912c" defer></script>
-  <script src="assets/data/courses.js?v=20260912c" defer></script>
+  <script src="assets/data/site-stats.js?v=20260912d" defer></script>
+  <script src="assets/data/aliases.js?v=20260912d" defer></script>
+  <script src="assets/data/index-meta.js?v=20260912d" defer></script>
+  <script src="assets/data/topics.js?v=20260912d" defer></script>
+  <script src="assets/data/courses.js?v=20260912d" defer></script>
   <!-- 注译改为「键索引 + 内容分片」：首屏只载 notes-index.js（约 42KB），
        真实注译在 notes/p{n}.js 按需懒加载（原 notes.js 3.05MB 不再随页面加载） -->
-  <script src="assets/data/notes-index.js?v=20260912c" defer></script>
-  <script src="assets/data/notes-meta.js?v=20260912c" defer></script>
-  <script src="assets/js/config.js?v=20260912c" defer></script>
-  <script src="assets/js/cloud.js?v=20260912c" defer></script>
-  <script src="assets/js/site-nav.js?v=20260912c" defer></script>
-  <script src="assets/js/main.js?v=20260912c" defer></script>
+  <script src="assets/data/notes-index.js?v=20260912d" defer></script>
+  <script src="assets/data/notes-meta.js?v=20260912d" defer></script>
+  <script src="assets/js/config.js?v=20260912d" defer></script>
+  <script src="assets/js/cloud.js?v=20260912d" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912d" defer></script>
+  <script src="assets/js/main.js?v=20260912d" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

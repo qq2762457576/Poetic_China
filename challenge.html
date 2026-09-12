@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260912c" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912d" />
 </head>
 <body data-page="challenge" data-nav-search="1">
 
@@ -87,6 +87,8 @@
         <!-- 中央主区：题目卡 -->
         <div>
           <div class="card quiz-main-card">
+            <!-- 横向关卡进度（V3 §22）：一格一题，答过变朱砂，当前题高亮 -->
+            <div class="quiz-levels" id="quiz-levels" aria-label="本轮关卡进度"></div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
               <span id="quiz-index" style="font-size:14px;font-weight:500;color:var(--cinnabar);">第 1 / 10 题 · 填空补全</span>
               <span id="quiz-timer" style="font-size:13px;color:var(--ink-300);">用时 00:00</span>
@@ -174,13 +176,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260912c" defer></script>
-  <script src="assets/data/aliases.js?v=20260912c" defer></script>
-  <script src="assets/data/banks.js?v=20260912c" defer></script>
-  <script src="assets/js/config.js?v=20260912c" defer></script>
-  <script src="assets/js/cloud.js?v=20260912c" defer></script>
-  <script src="assets/js/site-nav.js?v=20260912c" defer></script>
-  <script src="assets/js/main.js?v=20260912c" defer></script>
+  <script src="assets/data/site-stats.js?v=20260912d" defer></script>
+  <script src="assets/data/aliases.js?v=20260912d" defer></script>
+  <script src="assets/data/banks.js?v=20260912d" defer></script>
+  <script src="assets/js/config.js?v=20260912d" defer></script>
+  <script src="assets/js/cloud.js?v=20260912d" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912d" defer></script>
+  <script src="assets/js/main.js?v=20260912d" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

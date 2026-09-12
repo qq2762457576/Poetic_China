@@ -166,6 +166,7 @@
     var progressText = document.getElementById('daily-progress-text');
     var progressFill = document.getElementById('daily-progress-fill');
     var levelList = document.getElementById('level-list');
+    var levelStrip = document.getElementById('quiz-levels');
 
     /* --- 我的最好成绩 ---
      * 纯静态站没有服务器，无法聚合全站用户的真实分数。
@@ -245,14 +246,28 @@
     }
 
     function renderLevels() {
-      if (!levelList) return;
-      levelList.innerHTML = st.deck
-        .map(function (q, i) {
-          var cls = i < st.index ? 'level-row is-done' : i === st.index ? 'level-row is-current' : 'level-row';
-          var label = i < st.index ? '\u5DF2\u4F5C\u7B54' : i === st.index ? '\u8FDB\u884C\u4E2D' : '\u5F85\u4F5C\u7B54';
-          return '<div class="' + cls + '"><span class="name">\u7B2C ' + (i + 1) + ' \u9898</span><span class="state">' + label + '</span></div>';
-        })
-        .join('');
+      if (levelList) {
+        levelList.innerHTML = st.deck
+          .map(function (q, i) {
+            var cls = i < st.index ? 'level-row is-done' : i === st.index ? 'level-row is-current' : 'level-row';
+            var label = i < st.index ? '\u5DF2\u4F5C\u7B54' : i === st.index ? '\u8FDB\u884C\u4E2D' : '\u5F85\u4F5C\u7B54';
+            return '<div class="' + cls + '"><span class="name">\u7B2C ' + (i + 1) + ' \u9898</span><span class="state">' + label + '</span></div>';
+          })
+          .join('');
+      }
+      /* 横向关卡进度（V3 §22）：答题区上方一格一题。
+       * 口径与左栏「本轮进度」一致：i < index 为已作答，
+       * 当前题在作答后（st.answered）立即转已答色，不等下一题。 */
+      if (levelStrip) {
+        levelStrip.innerHTML = st.deck
+          .map(function (_, i) {
+            var done = i < st.index || (i === st.index && st.answered);
+            var cur = i === st.index && !st.answered;
+            var cls = done ? 'lv-seg is-done' : cur ? 'lv-seg is-current' : 'lv-seg';
+            return '<span class="' + cls + '" title="\u7B2C ' + (i + 1) + ' \u9898"></span>';
+          })
+          .join('');
+      }
     }
 
     function showResult() {
@@ -313,6 +328,8 @@
       });
       if (progressText) progressText.textContent = '\u4ECA\u65E5\u8FDB\u5EA6 ' + Math.min(st.done, QUIZ_PER_RUN) + ' / ' + QUIZ_PER_RUN + ' \u9898';
       if (progressFill) progressFill.style.width = Math.min(st.done / QUIZ_PER_RUN, 1) * 100 + '%';
+      /* 答题后立即刷新横向关卡进度（当前题作答即转已答色，不必等下一题） */
+      renderLevels();
     }
 
     optionsEl.addEventListener('click', function (e) {

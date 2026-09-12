@@ -36,7 +36,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260912c" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912d" />
 </head>
 <body data-page="home">
 
@@ -47,38 +47,66 @@
 
 
   <main>
-    <!-- ============ Hero ============ -->
+    <!-- ============ Hero（V3 模拟图：水墨通栏铺底，文字浮于左） ============ -->
     <section class="hero">
+      <img class="hero-bg" src="assets/img/hero-wide.jpg" alt="" aria-hidden="true" />
       <div class="ink-cloud ink-cloud--a" aria-hidden="true"></div>
-      <div class="ink-cloud ink-cloud--b" aria-hidden="true"></div>
-      <div class="container">
-        <div class="hero-grid">
-          <div class="hero-copy">
-            <p class="hero-eyebrow anim-fade" style="--d:.05s">诗三百，一言以蔽之，曰思无邪</p>
-            <h1 class="hero-title">
-              <span class="hero-line anim-fade" style="--d:.15s">把八万九千首诗词，</span>
-              <span class="hero-line anim-fade" style="--d:.3s">过成<em class="hero-em">自己的日子</em>。</span>
-            </h1>
-            <p class="hero-sub anim-fade" style="--d:.45s">
-              从《诗经》《楚辞》到全唐诗、全宋词、元曲，再到主席诗词——全部可查、可读、可背。
-              每天一首，逐句注释；提笔写自己的，与同好唱和。
-            </p>
-            <form class="hero-search anim-fade" style="--d:.6s" id="hero-search" role="search" aria-label="站内诗词搜索">
-              <input type="search" id="hero-kw" placeholder="搜索诗词、作者、主题…" aria-label="搜索诗词、作者、主题" maxlength="40" autocomplete="off" />
-              <button class="btn btn--primary" type="submit">开始探索</button>
-            </form>
-            <p class="trust-line anim-fade" style="--d:.75s">开源古籍数据 · 社区共同编校 · 永久免费</p>
-          </div>
-          <div class="hero-art anim-fade" style="--d:.4s">
-            <img src="assets/img/hero-ink.png" alt="水墨山水：远山如黛，一叶扁舟" class="hero-img hero-img--float" />
-            <div class="seal seal--lg hero-seal">诗</div>
-          </div>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <p class="hero-eyebrow anim-fade" style="--d:.05s">诗三百，一言以蔽之，曰思无邪</p>
+          <h1 class="hero-title">
+            <span class="hero-line anim-fade" style="--d:.15s">把八万九千首诗词，</span>
+            <span class="hero-line anim-fade" style="--d:.3s">过成<em class="hero-em">自己的日子</em>。</span>
+          </h1>
+          <p class="hero-sub anim-fade" style="--d:.45s">
+            从《诗经》《楚辞》到全唐诗、全宋词、元曲，再到主席诗词——全部可查、可读、可背。
+            每天一首，逐句注释；提笔写自己的，与同好唱和。
+          </p>
+          <form class="hero-search anim-fade" style="--d:.6s" id="hero-search" role="search" aria-label="站内诗词搜索">
+            <input type="search" id="hero-kw" placeholder="搜索诗词、作者、主题…" aria-label="搜索诗词、作者、主题" maxlength="40" autocomplete="off" />
+            <button class="btn btn--primary" type="submit">开始探索</button>
+          </form>
+          <p class="trust-line anim-fade" style="--d:.75s">开源古籍数据 · 社区共同编校 · 永久免费</p>
         </div>
       </div>
+      <div class="seal seal--lg hero-seal" aria-hidden="true">诗</div>
     </section>
 
+    <!-- ============ 功能快捷入口（V3 模拟图：五项图标行） ============ -->
+    <nav class="quick-nav" aria-label="功能快捷入口">
+      <div class="container">
+        <div class="quick-row">
+          <a class="quick-item" href="index.html#daily">
+            <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.6"/></svg></span>
+            <span class="quick-label">每日一诗</span>
+            <span class="quick-desc">每天一首，日常美好</span>
+          </a>
+          <a class="quick-item" href="library.html">
+            <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h14v16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="quick-label">诗词库</span>
+            <span class="quick-desc">8.9万首 · 5395 位诗人</span>
+          </a>
+          <a class="quick-item" href="study.html">
+            <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m3 8 9-4 9 4-9 4-9-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10.5V15c0 1 2.2 2.5 5 2.5s5-1.5 5-2.5v-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="quick-label">学习课堂</span>
+            <span class="quick-desc">系统学习，读懂理解</span>
+          </a>
+          <a class="quick-item" href="challenge.html">
+            <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" stroke="currentColor" stroke-width="1.6"/><path d="M7 6H5m14 0h-2M12 15v5m-3 0h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="quick-label">挑战闯关</span>
+            <span class="quick-desc">以诗会友，挑战自我</span>
+          </a>
+          <a class="quick-item" href="community.html">
+            <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 0-3.1 6.3L20 19l-.8-3.2A7.9 7.9 0 0 0 20 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 11h6M9 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="quick-label">社区广场</span>
+            <span class="quick-desc">分享感受，交流心得</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
     <!-- ============ 每日推荐（动态） ============ -->
-    <section class="section">
+    <section class="section" id="daily">
       <div class="container">
         <div class="daily-grid">
           <div class="section-head section-head--left">
@@ -210,13 +238,13 @@
   <!-- ============ 移动端底栏 ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260912c" defer></script>
-  <script src="assets/data/aliases.js?v=20260912c" defer></script>
-  <script src="assets/data/featured.js?v=20260912c" defer></script>
-  <script src="assets/js/config.js?v=20260912c" defer></script>
-  <script src="assets/js/cloud.js?v=20260912c" defer></script>
-  <script src="assets/js/site-nav.js?v=20260912c" defer></script>
-  <script src="assets/js/main.js?v=20260912c" defer></script>
+  <script src="assets/data/site-stats.js?v=20260912d" defer></script>
+  <script src="assets/data/aliases.js?v=20260912d" defer></script>
+  <script src="assets/data/featured.js?v=20260912d" defer></script>
+  <script src="assets/js/config.js?v=20260912d" defer></script>
+  <script src="assets/js/cloud.js?v=20260912d" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912d" defer></script>
+  <script src="assets/js/main.js?v=20260912d" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

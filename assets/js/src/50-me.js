@@ -13,24 +13,28 @@
 
     var name = CURRENT_USER || Auth.current() || null;
     var guestCard = document.getElementById('me-guest-card');
-    var accountCard = document.getElementById('me-account-card');
+    /* V3 §26：资料头卡（me-profile-head）登录/未登录共用一张 ——
+     * 头像、昵称、模式徽章、退出按钮都常驻头卡，靠 hidden 切换；
+     * 旧 me-account-card 已并入头卡，这里不再存在。 */
+    var signoutBtn = document.getElementById('me-signout');
+    var accLine = document.getElementById('me-account-line');
 
-    /* --- 1. 账号区：登录 → 账号卡；未登录 → 提示卡 --- */
+    /* --- 1. 账号区：登录 → 补全头卡；未登录 → 保持「诗友」占位 + 提示条 --- */
     if (name) {
-      if (accountCard) accountCard.hidden = false;
       if (guestCard) guestCard.hidden = true;
       var nameEl = document.getElementById('me-name');
       if (nameEl) nameEl.textContent = name;
       renderMeAvatar(name);
-      var accLine = document.getElementById('me-account-line');
       if (accLine) {
         var mail = myEmail();
         accLine.textContent = mail ? mail : '本地账号（仅本机有效）';
       }
+      if (signoutBtn) signoutBtn.hidden = false;
       subtitle.textContent = name + ' 的诗词学习空间';
     } else {
       if (guestCard) guestCard.hidden = false;
-      if (accountCard) accountCard.hidden = true;
+      if (accLine) accLine.textContent = '未登录 · 数据此刻只保存在这台设备上';
+      if (signoutBtn) signoutBtn.hidden = true;
       subtitle.textContent = '你的诗词学习空间';
 
       /* 未登录提示条按模式给文案。

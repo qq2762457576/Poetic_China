@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260912c';
+  var DATA_V = '20260912d';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -1104,24 +1104,28 @@
 
     var name = CURRENT_USER || Auth.current() || null;
     var guestCard = document.getElementById('me-guest-card');
-    var accountCard = document.getElementById('me-account-card');
+    /* V3 §26：资料头卡（me-profile-head）登录/未登录共用一张 ——
+     * 头像、昵称、模式徽章、退出按钮都常驻头卡，靠 hidden 切换；
+     * 旧 me-account-card 已并入头卡，这里不再存在。 */
+    var signoutBtn = document.getElementById('me-signout');
+    var accLine = document.getElementById('me-account-line');
 
-    /* --- 1. 账号区：登录 → 账号卡；未登录 → 提示卡 --- */
+    /* --- 1. 账号区：登录 → 补全头卡；未登录 → 保持「诗友」占位 + 提示条 --- */
     if (name) {
-      if (accountCard) accountCard.hidden = false;
       if (guestCard) guestCard.hidden = true;
       var nameEl = document.getElementById('me-name');
       if (nameEl) nameEl.textContent = name;
       renderMeAvatar(name);
-      var accLine = document.getElementById('me-account-line');
       if (accLine) {
         var mail = myEmail();
         accLine.textContent = mail ? mail : '本地账号（仅本机有效）';
       }
+      if (signoutBtn) signoutBtn.hidden = false;
       subtitle.textContent = name + ' 的诗词学习空间';
     } else {
       if (guestCard) guestCard.hidden = false;
-      if (accountCard) accountCard.hidden = true;
+      if (accLine) accLine.textContent = '未登录 · 数据此刻只保存在这台设备上';
+      if (signoutBtn) signoutBtn.hidden = true;
       subtitle.textContent = '你的诗词学习空间';
 
       /* 未登录提示条按模式给文案。
@@ -3189,6 +3193,8 @@
     var id = parseInt(params.get('id'), 10);
     var courseId = params.get('course');
     var hasPoemParam = params.has('id') || params.has('title');
+    /* V3 §13：默认阅读视图；?mode=steps 直进六步学习流程 */
+    var stepsMode = params.get('mode') === 'steps';
 
     /* 入口页 = 精品课程 + 精编专题；?course=<id> 深链接则直接打开该门课。
      * course 值未知时如实退回入口页（网格照常显示，不报错装死）。
@@ -3221,7 +3227,7 @@
       /* 索引分片尚未载入：先下载该片再渲染，保证深链接可达全库任意一首 */
       titleEl.textContent = '载入中…';
       IndexStore.poem(id, function (p2) {
-        initStudyWith(p2 || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+        initStudyWith(p2 || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0], stepsMode);
       });
       return;
     }
@@ -3230,20 +3236,33 @@
     var qTitle = params.get('title'), qAuthor = params.get('author');
     if (!poem && qTitle) {
       poem = findPoemLoose(qTitle, qAuthor);
-      if (poem) { initStudyWith(poem); return; }
+      if (poem) { initStudyWith(poem, stepsMode); return; }
       titleEl.textContent = '载入中…';
       IndexStore.ensureAll(null, function () {
-        initStudyWith(findPoemLoose(qTitle, qAuthor) || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0]);
+        initStudyWith(findPoemLoose(qTitle, qAuthor) || findByTitleAuthor('登高', '杜甫') || loadedPoems()[0], stepsMode);
       });
       return;
     }
     if (!poem) poem = findByTitleAuthor('登高', '杜甫') || loadedPoems()[0];
-    initStudyWith(poem);
+    initStudyWith(poem, stepsMode);
   }
 
-  function initStudyWith(poem) {
+  function initStudyWith(poem, stepsMode) {
     var titleEl = document.getElementById('study-title');
     if (!poem || !titleEl) return;
+
+    /* V3 §13/§14：默认阅读优先视图 —— 有 reading-view 区块且未指定 ?mode=steps。
+     * 旧六步流代码路径保持原样，只是默认藏起来；运行期切换见 renderReadingView。 */
+    var useReading = !!document.getElementById('reading-view') && !stepsMode;
+    var rdView = document.getElementById('reading-view');
+    var pageHead = document.querySelector('.page-head');
+    var bodyEl = document.getElementById('study-body');
+    if (useReading) {
+      if (pageHead) pageHead.hidden = true;
+      if (bodyEl) bodyEl.hidden = true;
+    } else if (rdView) {
+      rdView.hidden = true;
+    }
 
     /* 头部：索引数据，立即渲染 */
     titleEl.textContent = poem.title;
@@ -3391,6 +3410,10 @@
         '<div class="poet-name serif">' + esc(poem.author) + '</div>' +
         '<div class="poet-dynasty">' + esc(poem.dynasty) + '代 · 库中收录 ' + count + ' 首</div>';
     }
+
+    /* 阅读优先视图（V3 §13/§14）：头部与接线；正文/面板由 renderStudyText →
+     * renderReadingContent 灌入（两套视图共用一次取数）。 */
+    renderReadingView(poem, useReading);
   }
 
   /* ---------- 六步学习流程控制器 ----------
@@ -3679,9 +3702,236 @@
       renderPickLines(pickList, lines, hints, poem);
     }
     if (famousPanel) renderPickedFamous(famousPanel, poem);
+
+    /* 阅读优先视图（V3 §13/§14）：正文与注译此刻均已就绪，
+     * 顺手把阅读视图的内容区也灌上 —— 两套视图共用一次取数，无需用户再等。 */
+    if (typeof renderReadingContent === 'function') {
+      renderReadingContent(poem, curated, extra, lines);
+    }
   }
 
   /* 第四步的点选区：列出全篇句子，标出「手册推荐 / 赏析引用」的提示位。*/
+  /* ---------- 7b. 阅读优先视图（V3 方案 §13/§14） ----------
+   * 默认进入「读」的状态：居中标题、大字正文、注/译/赏/作者/背景五标签。
+   * 六步学习流程不删不改，经「开始系统学习」按钮（或 ?mode=steps）进入。
+   *
+   * 口径约束（与六步流完全一致，不新造）：
+   *   · 收藏  → shici_favs + Cloud.favs（与 fav-btn 同一套）
+   *   · 打卡  → shici_learned + markDailyToday（仅新学计数，与 checkin-btn 同一套）
+   *   · 注译  → CURATED / lookupNotes 三级兜底（与 renderStudyText 同一套）
+   *   · 同题材推荐 → seededPick(poem.id*31+7, 3)，与侧栏 related-list 同一套
+   * 刻意不做的：阅读视图里不重复渲染六步流的内容面板 —— 两套视图共用
+   * renderStudyText 一次性灌入，谁在前台用户看谁。 */
+
+  /* 阅读视图 ↔ 六步流 的显隐切换。on=true 显示阅读视图 */
+  function showReadingView(on) {
+    var rd = document.getElementById('reading-view');
+    if (!rd) return;
+    rd.hidden = !on;
+    var pageHead = document.querySelector('.page-head');
+    if (pageHead) pageHead.hidden = on;
+    var body = document.getElementById('study-body');
+    if (body) body.hidden = on;
+  }
+
+  /* 头部 / 操作区 / 骨架：索引数据到手即可渲染（正文与面板由 renderReadingContent 补） */
+  function renderReadingView(poem, active) {
+    var rd = document.getElementById('reading-view');
+    if (!rd || !poem) return;
+
+    var metaEl = document.getElementById('rd-meta');
+    if (metaEl) metaEl.textContent = poem.dynasty + ' · ' + poem.form;
+    var titleEl = document.getElementById('rd-title');
+    if (titleEl) titleEl.textContent = poem.title;
+    var authorEl = document.getElementById('rd-author');
+    if (authorEl) authorEl.textContent = poem.author + '〔' + poem.dynasty + '〕';
+
+    var ch = document.getElementById('rd-challenge');
+    if (ch) ch.href = 'challenge.html?title=' + encodeURIComponent(poem.title) +
+      '&author=' + encodeURIComponent(poem.author);
+
+    /* 收藏 */
+    var favBtn = document.getElementById('rd-fav');
+    function syncFav() {
+      if (favBtn) favBtn.textContent = isFav(poem.id) ? '已收藏' : '收藏';
+    }
+    if (favBtn) {
+      favBtn.addEventListener('click', function () {
+        toggleIn(favIds, poem.id);
+        saveStore('shici_favs', favIds);
+        if (loggedIn()) {
+          if (isFav(poem.id)) window.Cloud.favs.add(poem.id);
+          else window.Cloud.favs.remove(poem.id);
+        }
+        syncFav();
+        /* 头部六步流的收藏按钮文案同步（两处共用一套存储） */
+        var headFav = document.getElementById('fav-btn');
+        if (headFav) headFav.textContent = isFav(poem.id) ? '已收藏' : '收藏';
+      });
+      syncFav();
+    }
+
+    /* 打卡：与侧栏打卡同一口径（新学才 markDailyToday） */
+    var checkin = document.getElementById('rd-checkin');
+    function syncCheckin() {
+      if (!checkin) return;
+      if (isLearned(poem.id)) {
+        checkin.textContent = '已加入学习记录';
+        checkin.disabled = true;
+        checkin.style.opacity = '.6';
+      }
+    }
+    if (checkin) {
+      checkin.addEventListener('click', function () {
+        if (!isLearned(poem.id)) {
+          learnedIds.push(poem.id);
+          saveStore('shici_learned', learnedIds);
+          markDailyToday(1);
+          if (loggedIn()) window.Cloud.learned.add(poem.id);
+        }
+        syncCheckin();
+        var sideCheckin = document.getElementById('checkin-btn');
+        if (sideCheckin && isLearned(poem.id)) {
+          sideCheckin.textContent = '已加入学习记录';
+          sideCheckin.disabled = true;
+          sideCheckin.style.opacity = '.6';
+        }
+      });
+      syncCheckin();
+    }
+
+    /* 五标签切换（与 study-tabs 同构） */
+    var tabBar = document.getElementById('rd-tabs');
+    if (tabBar) {
+      tabBar.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-rd-tab]');
+        if (!tab) return;
+        tabBar.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('tab--active'); });
+        tab.classList.add('tab--active');
+        var key = tab.getAttribute('data-rd-tab');
+        rd.querySelectorAll('[data-rd-panel]').forEach(function (p) {
+          p.hidden = p.getAttribute('data-rd-panel') !== key;
+        });
+      });
+    }
+
+    /* 开始系统学习 → 切回六步流 */
+    var stepsBtn = document.getElementById('rd-steps');
+    if (stepsBtn) {
+      stepsBtn.addEventListener('click', function () {
+        showReadingView(false);
+        var anchor = document.getElementById('study-steps');
+        if (anchor) window.scrollTo({ top: Math.max(anchor.offsetTop - 90, 0), behavior: 'smooth' });
+      });
+    }
+
+    /* 上一首 / 下一首（索引数据即可，无需等正文） */
+    var prevEl = document.getElementById('rd-prev');
+    if (prevEl) {
+      var prev = findPoem(poem.id - 1);
+      if (prev) { prevEl.href = poemUrl(prev.id); prevEl.textContent = '← ' + prev.title; prevEl.hidden = false; }
+      else prevEl.hidden = true;
+    }
+    var nextEl = document.getElementById('rd-next');
+    if (nextEl) {
+      var next = findPoem(poem.id + 1);
+      if (next) { nextEl.href = poemUrl(next.id); nextEl.textContent = next.title + ' →'; nextEl.hidden = false; }
+      else nextEl.hidden = true;
+    }
+
+    showReadingView(!!active);
+  }
+
+  /* 正文 + 注译都到位后，由 renderStudyText 调用：灌入阅读视图的内容区。
+   * poem.text / curated / extra / lines 全部来自调用方，不重复取数。 */
+  function renderReadingContent(poem, curated, extra, lines) {
+    /* 正文：居中大字，一行一联 */
+    var verses = document.getElementById('rd-verses');
+    if (verses) {
+      var got = false;
+      verses.innerHTML = lines.map(function (ln) {
+        var t = String(ln || '').trim();
+        if (!t) return '';
+        got = true;
+        return '<p class="rd-verse">' + esc(ln) + '</p>';
+      }).join('');
+      if (!got) verses.innerHTML = '<div class="empty-state">正文载入失败，请刷新重试。</div>';
+    }
+
+    /* 注释面板：精编逐句注优先，其次手册词注，没有如实占位（与六步流同一套口径） */
+    var notePanel = document.getElementById('rd-panel-notes');
+    if (notePanel) {
+      if (curated) {
+        notePanel.innerHTML = '<ul class="note-list">' + curated.notes.map(function (n) {
+          return '<li class="note-item"><strong>' + esc(n[0]) + '</strong><span>' + esc(n[1]) + '</span></li>';
+        }).join('') + '</ul>';
+      } else if (extra && extra.n && extra.n.length) {
+        notePanel.innerHTML = '<ul class="note-list">' + extra.n.map(function (n) {
+          var sep = n.indexOf('：');
+          if (sep === -1) sep = n.indexOf(':');
+          return sep > 0
+            ? '<li class="note-item"><strong>' + esc(n.slice(0, sep)) + '</strong><span>' + esc(n.slice(sep + 1)) + '</span></li>'
+            : '<li class="note-item"><span>' + esc(n) + '</span></li>';
+        }).join('') + '</ul>';
+      } else {
+        notePanel.innerHTML = '<div class="empty-state">该篇的注释正在编校中，欢迎到社区广场分享你的理解。</div>';
+      }
+    }
+
+    /* 译文面板 */
+    var transPanel = document.getElementById('rd-panel-translation');
+    if (transPanel) {
+      var trans = curated ? curated.translation : (extra && extra.y);
+      transPanel.innerHTML = trans
+        ? '<p class="serif study-prose">' + esc(trans) + '</p>'
+        : '<div class="empty-state">白话译文正在编校中。先读原文，体会字面之下的节奏与气息。</div>';
+    }
+
+    /* 赏析面板 */
+    var aprePanel = document.getElementById('rd-panel-appreciation');
+    if (aprePanel) {
+      var apre = curated ? curated.appreciation : (extra && extra.s);
+      aprePanel.innerHTML = apre
+        ? '<p class="serif study-prose">' + esc(apre) + '</p>'
+        : '<div class="empty-state">赏析文章正在编校中。' + esc(poem.form) + ' · ' + esc(poem.themes[0]) + '题材，全文 ' + lines.length + ' 行。</div>';
+    }
+
+    /* 作者面板：库里可查的事实（署名净名 + 收录数），不编生平 */
+    var poetPanel = document.getElementById('rd-panel-poet');
+    if (poetPanel) {
+      var count = 0;
+      loadedPoems().forEach(function (p) { if (p.author === poem.author) count++; });
+      poetPanel.innerHTML =
+        '<div class="poet-name serif">' + esc(poem.author) + '</div>' +
+        '<div class="poet-dynasty">' + esc(poem.dynasty) + '代 · 库中收录 ' + count + ' 首</div>';
+    }
+
+    /* 背景面板：notes.b（约 1221 条带背景），没有如实说明 */
+    var bgPanel = document.getElementById('rd-panel-background');
+    if (bgPanel) {
+      var bg = (curated && curated.background) || (extra && extra.b);
+      bgPanel.innerHTML = bg
+        ? '<p class="serif study-prose">' + esc(bg) + '</p>'
+        : '<div class="empty-state">创作背景暂未收录。先把诗读熟，字句自会说话。</div>';
+    }
+
+    /* 同题材推荐：与侧栏 related-list 同一取法（同种子 → 同推荐） */
+    var relEl = document.getElementById('rd-related');
+    if (relEl) {
+      var same = loadedPoems().filter(function (p) {
+        return p.id !== poem.id && p.themes[0] === poem.themes[0] && p.line.length <= 30;
+      });
+      var picks = seededPick(same, poem.id * 31 + 7, 3);
+      relEl.innerHTML = picks.map(function (p) {
+        return (
+          '<a class="related-item" href="' + poemUrl(p.id) + '">' +
+          '<strong>' + esc(p.title) + '</strong>' +
+          '<span>' + esc(p.author) + ' · ' + esc(p.dynasty) + '</span>' +
+          '</a>'
+        );
+      }).join('');
+    }
+  }
   function renderPickLines(listEl, lines, hints, poem) {
     var hintSet = {};
     (hints || []).forEach(function (h) { hintSet[h.line] = { why: h.why || '', tag: h.tag || '赏析曾引用' }; });
@@ -4351,6 +4601,7 @@
     var progressText = document.getElementById('daily-progress-text');
     var progressFill = document.getElementById('daily-progress-fill');
     var levelList = document.getElementById('level-list');
+    var levelStrip = document.getElementById('quiz-levels');
 
     /* --- 我的最好成绩 ---
      * 纯静态站没有服务器，无法聚合全站用户的真实分数。
@@ -4430,14 +4681,28 @@
     }
 
     function renderLevels() {
-      if (!levelList) return;
-      levelList.innerHTML = st.deck
-        .map(function (q, i) {
-          var cls = i < st.index ? 'level-row is-done' : i === st.index ? 'level-row is-current' : 'level-row';
-          var label = i < st.index ? '\u5DF2\u4F5C\u7B54' : i === st.index ? '\u8FDB\u884C\u4E2D' : '\u5F85\u4F5C\u7B54';
-          return '<div class="' + cls + '"><span class="name">\u7B2C ' + (i + 1) + ' \u9898</span><span class="state">' + label + '</span></div>';
-        })
-        .join('');
+      if (levelList) {
+        levelList.innerHTML = st.deck
+          .map(function (q, i) {
+            var cls = i < st.index ? 'level-row is-done' : i === st.index ? 'level-row is-current' : 'level-row';
+            var label = i < st.index ? '\u5DF2\u4F5C\u7B54' : i === st.index ? '\u8FDB\u884C\u4E2D' : '\u5F85\u4F5C\u7B54';
+            return '<div class="' + cls + '"><span class="name">\u7B2C ' + (i + 1) + ' \u9898</span><span class="state">' + label + '</span></div>';
+          })
+          .join('');
+      }
+      /* 横向关卡进度（V3 §22）：答题区上方一格一题。
+       * 口径与左栏「本轮进度」一致：i < index 为已作答，
+       * 当前题在作答后（st.answered）立即转已答色，不等下一题。 */
+      if (levelStrip) {
+        levelStrip.innerHTML = st.deck
+          .map(function (_, i) {
+            var done = i < st.index || (i === st.index && st.answered);
+            var cur = i === st.index && !st.answered;
+            var cls = done ? 'lv-seg is-done' : cur ? 'lv-seg is-current' : 'lv-seg';
+            return '<span class="' + cls + '" title="\u7B2C ' + (i + 1) + ' \u9898"></span>';
+          })
+          .join('');
+      }
     }
 
     function showResult() {
@@ -4498,6 +4763,8 @@
       });
       if (progressText) progressText.textContent = '\u4ECA\u65E5\u8FDB\u5EA6 ' + Math.min(st.done, QUIZ_PER_RUN) + ' / ' + QUIZ_PER_RUN + ' \u9898';
       if (progressFill) progressFill.style.width = Math.min(st.done / QUIZ_PER_RUN, 1) * 100 + '%';
+      /* 答题后立即刷新横向关卡进度（当前题作答即转已答色，不必等下一题） */
+      renderLevels();
     }
 
     optionsEl.addEventListener('click', function (e) {
