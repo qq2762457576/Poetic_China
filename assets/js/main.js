@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260911z';
+  var DATA_V = '20260912a';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -2105,19 +2105,85 @@
     var classicTag = p.kind === 'classic' ? '<span class="badge-pill badge-classic">分享经典</span>' : '';
     var d = new Date(p.ts);
     var when = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    /* 4.4 关联作品直达：分享经典且诗还在库里 → 给「读原文」入口 */
+    var poemLink = '';
+    if (p.kind === 'classic' && p.poemId !== null && p.poemId !== undefined) {
+      var pl = findPoem(p.poemId);
+      if (pl) poemLink = '<a class="post-poem-link" href="' + poemUrl(pl.id) + '">读原文 →</a>';
+    }
+    var rep = reportedIds().indexOf(String(p.id)) >= 0;
+    var reportBtn = '<button data-report="' + esc(p.id) + '"' +
+      (rep ? ' disabled class="is-reported"' : '') + '>' +
+      (rep ? '已举报' : '举报') + '</button>';
     return (
       '<article class="card post-card anim-rise is-in" data-post="' + esc(p.id) + '">' +
       '<div class="post-head">' + avatarHtml(p.author) +
       '<span class="who">' + esc(p.author) + ' · ' + when + '</span>' + classicTag + statusBadge + '</div>' +
       '<h3 class="post-title">' + esc(p.title) + '</h3>' +
-      '<p class="poem-body">' + postBody(p) + '</p>' +
+      '<p class="poem-body">' + postBody(p) + poemLink + '</p>' +
       '<div class="post-foot">' +
       '<button data-like="' + p.likes + '">赞 ' + p.likes + '</button>' +
       '<button data-comments-toggle="' + esc(p.id) + '">评论</button>' +
+      reportBtn +
       '</div>' +
       '<div class="comment-area" data-comments="' + esc(p.id) + '" hidden></div>' +
       '</article>'
     );
+  }
+
+  /* ---------- 举报（PRD 4.1）：mailto 通道 + 本地防重复 ----------
+   * 零 SQL、立即可用：点举报 → 拉起邮件客户端预填帖子信息发给站长；
+   * 站长处置路径复用审核面板的 setStatus（驳回/下架）。
+   * shici_reported 只在本机记「我已举报过哪几条」，防止重复骚扰。 */
+  var REPORT_EMAIL = '2762457576@qq.com';
+
+  function reportedIds() {
+    try { return JSON.parse(localStorage.getItem('shici_reported') || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function markReported(id) {
+    var list = reportedIds();
+    if (list.indexOf(id) < 0) {
+      list.push(id);
+      if (list.length > 200) list = list.slice(-200);
+      localStorage.setItem('shici_reported', JSON.stringify(list));
+    }
+  }
+
+  function reportMailto(info) {
+    var subject = '[诗词站举报] ' + (info.title || '无标题');
+    var body = '举报帖子：\n' +
+      '帖子ID：' + info.id + '\n' +
+      '标题：' + (info.title || '') + '\n' +
+      '作者：' + (info.author || '') + '\n' +
+      '页面：' + location.href + '\n\n' +
+      '举报理由（请在此填写）：';
+    return 'mailto:' + REPORT_EMAIL +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+  }
+
+  function bindReport(btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-report');
+      if (reportedIds().indexOf(id) >= 0) {
+        btn.textContent = '已举报';
+        btn.disabled = true;
+        return;
+      }
+      var card = btn.closest('.post-card');
+      var titleEl = card ? card.querySelector('.post-title') : null;
+      var whoEl = card ? card.querySelector('.who') : null;
+      markReported(id);
+      btn.textContent = '已举报';
+      btn.disabled = true;
+      location.href = reportMailto({
+        id: id,
+        title: titleEl ? titleEl.textContent : '',
+        author: whoEl ? (whoEl.textContent.split(' · ')[0] || '') : ''
+      });
+    });
   }
 
   /* ---------- 评论区渲染 ---------- */
@@ -2223,6 +2289,7 @@
         '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
         '</div>';
       list.querySelectorAll('[data-like]').forEach(bindLike);
+      list.querySelectorAll('[data-report]').forEach(bindReport);
       bindCommentToggles(list);
       fillClassicBodies(list);
       var composeBtn = list.querySelector('[data-open-compose]');

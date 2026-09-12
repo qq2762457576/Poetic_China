@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="aGgNNNzwd49kH0JoNrl4LC">
-<head data-page-node-id="zBYvkul9tvXODfHBT8bwqA">
-<meta charset="UTF-8" data-page-node-id="olbH1J90HbHrwUVwsp6lDy" />
-<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="Np93l1YVclQkmxXiaWvLRO" />
-<meta name="robots" content="noindex,nofollow" data-page-node-id="eVBk7xspSEXg8e3Rnrl7rQ" />
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
 <title>云端连接自检 · 诗意中国</title>
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" data-page-node-id="S8g0NH2WPCIz1Va4UMwBTD" />
-<link rel="stylesheet" href="assets/css/style.css?v=20260911z" data-page-node-id="ihlP7MQ0mRnIuN4G0nBhik" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260912a" />
 <style>
   .dbg-wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
   .dbg-h { font-size: 26px; margin: 0 0 8px; }
@@ -41,18 +41,18 @@
               padding: 10px 14px; font-size: 13px; line-height: 1.7; margin-top: 12px; }
 </style>
 </head>
-<body data-page-node-id="DPgcm7Q5PtC7wLEAr4BjpF">
-<div class="dbg-wrap" data-page-node-id="fLFPlV0QMLsNhN6E375ecG">
-  <h1 class="dbg-h serif" data-page-node-id="5gvtZYTkICW9u36lMLRHXA">云端连接自检</h1>
-  <p class="dbg-sub" data-page-node-id="LXjP9t3wsRdLuAC7kd2LRF">
-    填好 URL 和密钥后点「开始自检」，会逐项测试连通性并给出具体错误。<br  data-page-node-id="Uneneea2PGbUY69PcY5qje"/>
+<body>
+<div class="dbg-wrap">
+  <h1 class="dbg-h serif">云端连接自检</h1>
+  <p class="dbg-sub">
+    填好 URL 和密钥后点「开始自检」，会逐项测试连通性并给出具体错误。<br />
     这个页面只在你本机运行，输入的内容不会上传、不会保存到仓库。
   </p>
 
-  <div class="dbg-card" data-page-node-id="G693RgsQrRETD1meRU7fFJ">
-    <h3 data-page-node-id="moloZWRJJp75gX4nNhxOaV">① 去哪里找这两个值</h3>
-    <div class="dbg-where" data-page-node-id="v45bFP3B7EFFP6Aslzqbob">
-      <p data-page-node-id="KJUi3MLXOy0P4MYJSYAUEh"><b>Project URL</b> —— 你已经找到了，形如 <code class="dbg-code">https://abcdefgh.supabase.co</code>。<br />
+  <div class="dbg-card">
+    <h3>① 去哪里找这两个值</h3>
+    <div class="dbg-where">
+      <p><b>Project URL</b> —— 你已经找到了，形如 <code class="dbg-code">https://abcdefgh.supabase.co</code>。<br />
       新版界面里它在 <b>Project Settings → Data API</b>（旧版这个菜单叫 API，Supabase 改名了，所以按老教程找不到）。</p>
 
       <p style="margin-top:16px;"><b>密钥在哪 —— 三个地方找，总有一个能看见：</b></p>
@@ -67,34 +67,34 @@
         <li>旧版：<code class="dbg-code">eyJhbGciOi...</code>（一长串，通常 100 字符以上）</li>
       </ul>
       <p style="margin-top:10px;">如果看到好几条，认准带 <b>anon</b> 或 <b>publishable</b> 字样的那一条。</p>
-      <div class="dbg-warn" data-page-node-id="bHXca3w1UWvGYRB37yfqkE">
-        ⚠️ 千万不要复制 <b data-page-node-id="sEfHSD17nwjYYGwqG5qs6K">service_role</b> / <b data-page-node-id="1IJHGr1xIrMgx1xk5mJR4K">secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b data-page-node-id="Ckvb6VuRLHOcbX27cN4EE2">anon / publishable</b>。
+      <div class="dbg-warn">
+        ⚠️ 千万不要复制 <b>service_role</b> / <b>secret</b> 那一条。它是管理员密钥，放进前端等于把数据库权限公开。要的是 <b>anon / publishable</b>。
       </div>
     </div>
   </div>
 
-  <div class="dbg-card" data-page-node-id="oDXjl6JNIi8HBKIkgz65lz">
-    <h3 data-page-node-id="Mblkv3MkB3KYFWxionZQJP">② 填进来测一测</h3>
-    <div class="dbg-field" data-page-node-id="8RqHh81HGvWBuoZUhUIeVH">
-      <label data-page-node-id="zHxoZgDsOOCI1YJQwwf8HU">Project URL</label>
-      <input id="dbg-url" placeholder="https://abcdefgh.supabase.co" data-page-node-id="ParQWVlrelcvT4NZZpZsq1" />
-      <span class="dbg-hint" data-page-node-id="aDcEITItgAK7Dc6yBNHVP9">末尾的斜杠会自动去掉，带不带都行</span>
+  <div class="dbg-card">
+    <h3>② 填进来测一测</h3>
+    <div class="dbg-field">
+      <label>Project URL</label>
+      <input id="dbg-url" placeholder="https://abcdefgh.supabase.co" />
+      <span class="dbg-hint">末尾的斜杠会自动去掉，带不带都行</span>
     </div>
-    <div class="dbg-field" data-page-node-id="cfYU8zGUj7qRG4W7bVVvV6">
-      <label data-page-node-id="ZcLVHihRXSeyzy55izqV5K">anon / publishable key</label>
-      <input id="dbg-key" placeholder="eyJhbGciOi... 或 sb_publishable_..." data-page-node-id="uXfBt8iZP1O3bStqkCx94W" />
+    <div class="dbg-field">
+      <label>anon / publishable key</label>
+      <input id="dbg-key" placeholder="eyJhbGciOi... 或 sb_publishable_..." />
     </div>
-    <button class="dbg-btn" id="dbg-run" data-page-node-id="MBufhIQvbLB8zJjguGK8He">开始自检</button>
-    <span class="dbg-hint" style="margin-left:12px;" id="dbg-src" data-page-node-id="eecTdQcIEiSCumYRzhdgCJ"></span>
+    <button class="dbg-btn" id="dbg-run">开始自检</button>
+    <span class="dbg-hint" style="margin-left:12px;" id="dbg-src"></span>
   </div>
 
-  <div class="dbg-card dbg-steps" id="dbg-out" data-page-node-id="qEqPKwLVhuekEvVygOTy6q">
-    <h3 data-page-node-id="PzLJwY4SlpHHDHpo2MPlLZ">③ 自检结果</h3>
-    <div class="dbg-step" data-page-node-id="SZTjw3A4Pk0ClGBvm3EzEm"><span class="dbg-ico dbg-run" data-page-node-id="QSO6z1NYPtpDXSZok6rnp2">·</span><div data-page-node-id="BFh6TXengdeskpSe7fJVw5">等待开始<div class="dbg-msg" data-page-node-id="T5f7kFIoURPpYKUOMLOaFj">填好上面两项后点按钮</div></div></div>
+  <div class="dbg-card dbg-steps" id="dbg-out">
+    <h3>③ 自检结果</h3>
+    <div class="dbg-step"><span class="dbg-ico dbg-run">·</span><div>等待开始<div class="dbg-msg">填好上面两项后点按钮</div></div></div>
   </div>
 </div>
 
-<script src="assets/js/config.js?v=20260911z"></script>
+<script src="assets/js/config.js?v=20260912a"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };

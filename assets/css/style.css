@@ -1825,6 +1825,22 @@ form[data-panel][hidden] { display: none; }
   padding: 4px 0;
 }
 .post-foot button:hover { color: var(--cinnabar, #9c3b2e); }
+.post-foot button.is-reported,
+.post-foot button:disabled {
+  cursor: default;
+  color: var(--ink-300, #b5aea4);
+}
+.post-foot button.is-reported:hover { color: var(--ink-300, #b5aea4); }
+
+/* 4.4 帖子关联作品：读原文直达链接 */
+.post-poem-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--cinnabar, #9c3b2e);
+  text-decoration: none;
+}
+.post-poem-link:hover { text-decoration: underline; }
 
 /* 云端/本地模式角标 */
 .mode-tip {
