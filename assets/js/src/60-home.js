@@ -163,6 +163,17 @@
     var dailyEl = document.getElementById('daily-poem');
     if (!dailyEl) return;
 
+    /* V3 §9：Hero 搜索 —— 提交跳诗词库带关键词（?kw= 由诗词库页承接预填） */
+    var heroForm = document.getElementById('hero-search');
+    if (heroForm) {
+      heroForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var kwEl = document.getElementById('hero-kw');
+        var kw = kwEl ? kwEl.value.trim() : '';
+        location.href = 'library.html' + (kw ? '?kw=' + encodeURIComponent(kw) : '');
+      });
+    }
+
     var seed = daySeed();
     /* 每日推荐：从短于 120 字的名篇体量里按日期轮换 */
     var shortOnes = FEATURED.filter(function (p) { return p.text.length <= 120; });

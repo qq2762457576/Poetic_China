@@ -289,30 +289,53 @@
     });
   }
 
+  /* V3 §25 + 模拟图：信息流排序（最新/热门）。
+   * 热门按真实点赞数降序（点赞数为云端存储的真实值），并列再按时间新→旧；
+   * 不造任何互动数据 —— 没有点赞时热门与最新同序，属如实表现。 */
+  var feedSort = 'latest';
+  var feedCache = [];
+
+  function sortFeed(all) {
+    var arr = (all || []).slice();
+    if (feedSort === 'hot') {
+      arr.sort(function (a, b) { return (b.likes || 0) - (a.likes || 0) || b.ts - a.ts; });
+    } else {
+      arr.sort(function (a, b) { return b.ts - a.ts; });
+    }
+    return arr;
+  }
+
+  function paintFeed(all) {
+    var list = document.getElementById('post-list');
+    if (!list) return;
+    list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
+      '<div class="empty-state">' +
+      '<p style="margin:0 0 14px;">这里还很安静。分享第一首诗，或把喜欢的经典推荐给同好。</p>' +
+      '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
+      '</div>';
+    list.querySelectorAll('[data-like]').forEach(bindLike);
+    list.querySelectorAll('[data-report]').forEach(bindReport);
+    bindCommentToggles(list);
+    fillClassicBodies(list);
+    var composeBtn = list.querySelector('[data-open-compose]');
+    if (composeBtn) composeBtn.addEventListener('click', function () {
+      var trigger = document.querySelector('[data-compose-open]');
+      if (trigger) trigger.click();
+      else {
+        var card = document.getElementById('compose');
+        if (card) { card.hidden = false; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
+    });
+  }
+
   function renderFeed() {
     var list = document.getElementById('post-list');
     if (!list) return;
     list.innerHTML = skeletonCards(3, '正在载入诗友分享');
     /* 云端模式：所有访客（含未登录）都能看到全站已通过的分享 */
     loadFeed(function (all) {
-      list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
-        '<div class="empty-state">' +
-        '<p style="margin:0 0 14px;">这里还很安静。分享第一首诗，或把喜欢的经典推荐给同好。</p>' +
-        '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
-        '</div>';
-      list.querySelectorAll('[data-like]').forEach(bindLike);
-      list.querySelectorAll('[data-report]').forEach(bindReport);
-      bindCommentToggles(list);
-      fillClassicBodies(list);
-      var composeBtn = list.querySelector('[data-open-compose]');
-      if (composeBtn) composeBtn.addEventListener('click', function () {
-        var trigger = document.querySelector('[data-compose-open]');
-        if (trigger) trigger.click();
-        else {
-          var card = document.getElementById('compose');
-          if (card) { card.hidden = false; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        }
-      });
+      feedCache = all;
+      paintFeed(sortFeed(all));
     });
   }
 
@@ -417,6 +440,20 @@
   function initCommunity() {
     var feed = document.getElementById('post-list');
     if (!feed) return;
+
+    /* V3 §25：最新/热门排序 tab（有缓存时切换只重排，不发新请求） */
+    var sortBar = document.getElementById('feed-sort');
+    if (sortBar) {
+      sortBar.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-feed-sort]');
+        if (!tab) return;
+        feedSort = tab.getAttribute('data-feed-sort') === 'hot' ? 'hot' : 'latest';
+        sortBar.querySelectorAll('[data-feed-sort]').forEach(function (t) {
+          t.classList.toggle('is-active', t === tab);
+        });
+        if (feedCache.length) paintFeed(sortFeed(feedCache));
+      });
+    }
 
     renderFeed();
     /* 先按「未登录/非站长」渲染（面板默认隐藏），再拉云端名单复渲染一次，

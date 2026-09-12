@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260912a" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912b" />
 </head>
 <body data-page="community">
 
@@ -78,6 +78,11 @@
 
         <!-- 作品流 -->
         <div>
+          <!-- V3 §25：最新/热门排序（热门按真实点赞数） -->
+          <div class="sort-tabs" id="feed-sort" style="margin-bottom:14px;" role="tablist" aria-label="帖子排序">
+            <button class="sort-tab is-active" data-feed-sort="latest" type="button">最新</button>
+            <button class="sort-tab" data-feed-sort="hot" type="button">热门</button>
+          </div>
           <div id="post-list" style="display:flex;flex-direction:column;gap:16px;"></div>
         </div>
 
@@ -125,13 +130,13 @@
 
 
 
-  <script src="assets/data/site-stats.js?v=20260912a" defer></script>
-  <script src="assets/data/aliases.js?v=20260912a" defer></script>
-  <script src="assets/data/index-meta.js?v=20260912a" defer></script>
-  <script src="assets/js/config.js?v=20260912a" defer></script>
-  <script src="assets/js/cloud.js?v=20260912a" defer></script>
-  <script src="assets/js/site-nav.js?v=20260912a" defer></script>
-  <script src="assets/js/main.js?v=20260912a" defer></script>
+  <script src="assets/data/site-stats.js?v=20260912b" defer></script>
+  <script src="assets/data/aliases.js?v=20260912b" defer></script>
+  <script src="assets/data/index-meta.js?v=20260912b" defer></script>
+  <script src="assets/js/config.js?v=20260912b" defer></script>
+  <script src="assets/js/cloud.js?v=20260912b" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912b" defer></script>
+  <script src="assets/js/main.js?v=20260912b" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

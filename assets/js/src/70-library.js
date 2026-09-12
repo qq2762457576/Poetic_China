@@ -351,6 +351,19 @@
       });
     }
 
+    /* V3 §12：承接首页 Hero 搜索 —— library.html?kw=… 预填并执行一次检索。
+     * 不写入搜索历史（那是用户在库内主动回车的记忆）。 */
+    (function () {
+      var urlKw = '';
+      try { urlKw = (new URLSearchParams(location.search).get('kw') || '').trim(); } catch (e) { /* 老浏览器静默跳过 */ }
+      if (urlKw && input) {
+        input.value = urlKw;
+        state.keyword = urlKw;
+        state.page = 1;
+        renderPoems();
+      }
+    })();
+
     /* 历史记录点击复用 */
     var histChips = document.getElementById('history-chips');
     if (histChips) {

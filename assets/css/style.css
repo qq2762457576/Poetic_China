@@ -4,25 +4,26 @@
    ========================================================== */
 
 :root {
-  /* 色板 */
-  --paper: #f3eee4;          /* 宣纸底 */
-  --card: #fbf8f1;           /* 卡片米白 */
-  --sand: #f7f3ea;           /* 次级填充 */
-  --ink-900: #221e1a;        /* 浓墨 */
-  --ink-800: #2e2823;
-  --ink-700: #3a332c;
-  --ink-600: #4a423b;
-  --ink-500: #6b6158;
-  --ink-400: #857b70;        /* 淡墨 */
-  --ink-300: #a0968a;
-  --ink-200: #b3a895;
-  --line: #e0d8c8;
-  --line-soft: #e8e0d0;
-  --line-input: #ddd4c2;
+  /* 色板 —— V3 规范 §3：宣纸更暖更亮、朱砂提亮、线条改半透明墨色 */
+  --paper: #f6f1e7;          /* 宣纸底 */
+  --paper-deep: #eee5d5;     /* 深一度宣纸（分区底） */
+  --card: #fffdf8;           /* 卡片米白 */
+  --sand: #f1ead9;           /* 次级填充 */
+  --ink-900: #26231f;        /* 浓墨 */
+  --ink-800: #332e28;
+  --ink-700: #423b34;
+  --ink-600: #544c43;
+  --ink-500: #686157;        /* 规范 ink-soft */
+  --ink-400: #7e766b;
+  --ink-300: #91897d;        /* 规范 ink-light */
+  --ink-200: #a99f92;
+  --line: rgba(38, 35, 31, 0.12);
+  --line-soft: rgba(38, 35, 31, 0.08);
+  --line-input: rgba(38, 35, 31, 0.18);
   --chip: #ebe3d4;
-  --cinnabar: #9c3b2e;       /* 朱砂 */
-  --cinnabar-dark: #87332a;
-  --white: #ffffff;
+  --cinnabar: #a63d32;       /* 朱砂 */
+  --cinnabar-dark: #812e28;
+  --white: #fffdf8;
 
   /* 字体 */
   --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong,
@@ -30,8 +31,8 @@
   --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
     "Hiragino Sans GB", "Helvetica Neue", Arial, sans-serif;
 
-  --radius: 3px;
-  --container: 1440px;
+  --radius: 6px;
+  --container: 1280px;
   --tabbar-h: 62px;
   /* 全面屏安全区：iPhone 底部横条 / 圆角。graceful fallback 到 0 */
   /* 桌面顶栏高 76；移动端 56 + 安全区，sticky 的 top 要跟得上，否则导航条会被顶栏压住 */
@@ -48,7 +49,9 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background: var(--paper);
+  /* §4 纸张质感：SVG 噪点直接烘进背景图（不透明度 0.05 内嵌在 SVG 里），
+   * 「感觉得到纸、看不到纹理」——无额外 DOM、零层叠风险、零请求 */
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
   color: var(--ink-900);
   font-family: var(--font-sans);
   font-size: 15px;
@@ -72,7 +75,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 input, textarea { font: inherit; color: inherit; }
 
-::selection { background: rgba(156, 59, 46, .18); }
+::selection { background: rgba(166, 61, 50, .18); }
 
 /* ---------- 布局容器 ---------- */
 .container {
@@ -160,7 +163,7 @@ input, textarea { font: inherit; color: inherit; }
 .avatar-btn:hover .avatar-btn-mask,
 .avatar-btn:focus-visible .avatar-btn-mask { opacity: 1; }
 /* 键盘焦点可见（站点既有 :focus-visible 约定） */
-.avatar-btn:focus-visible { outline: 2px solid var(--cinnabar, #9c3b2e); outline-offset: 2px; }
+.avatar-btn:focus-visible { outline: 2px solid var(--cinnabar, #a63d32); outline-offset: 2px; }
 
 .me-account-ops { display: flex; gap: 10px; flex: none; }
 .me-account-tip {
@@ -329,6 +332,34 @@ input, textarea { font: inherit; color: inherit; }
 .hero-sub { font-size: 17px; line-height: 32px; color: var(--ink-500); }
 
 .cta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* V3 §9 Hero 搜索：输入框 + 主 CTA 一体，对齐模拟图（§8 首页先回答「今天读什么」） */
+.hero-search {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 460px;
+}
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  padding: 0 18px;
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-size: 15px;
+  color: var(--ink-900);
+  transition: border-color .2s ease;
+}
+.hero-search input::placeholder { color: var(--ink-300); }
+.hero-search input:focus { outline: none; border-color: var(--cinnabar); }
+.hero-search .btn { height: 50px; padding: 0 24px; }
+
+@media (max-width: 640px) {
+  .hero-search { max-width: none; }
+  .hero-search .btn { padding: 0 18px; }
+}
 
 .trust-line { font-size: 13px; color: var(--ink-400); }
 
@@ -1051,19 +1082,19 @@ body[data-page="auth"] .tabbar { display: none; }
   transition: color .18s ease, background .18s ease, transform .18s ease;
 }
 .verse-row:hover .verse-pick { color: #a8987c; }
-.verse-pick:hover { background: rgba(178, 58, 44, .08); color: var(--cinnabar, #b23a2c); }
+.verse-pick:hover { background: rgba(166, 61, 50, .08); color: var(--cinnabar, #a63d32); }
 .verse-pick[aria-pressed="true"] {
-  color: var(--cinnabar, #b23a2c);
-  text-shadow: 0 0 1px rgba(178, 58, 44, .35);
+  color: var(--cinnabar, #a63d32);
+  text-shadow: 0 0 1px rgba(166, 61, 50, .35);
 }
 .verse-pick:active { transform: scale(.9); }
 /* 键盘可达：鼠标点击不显示焦点环，Tab 导航必须显示（PRD 第二十八条） */
 .verse-pick:focus-visible {
-  outline: 2px solid var(--cinnabar, #b23a2c);
+  outline: 2px solid var(--cinnabar, #a63d32);
   outline-offset: 2px;
 }
 /* 已标记的句子：左侧朱红竖线 + 句色加深 */
-.verse-row.is-picked { background: rgba(178, 58, 44, .035); }
+.verse-row.is-picked { background: rgba(166, 61, 50, .035); }
 .verse-row.is-picked::before {
   content: "";
   position: absolute;
@@ -1072,9 +1103,9 @@ body[data-page="auth"] .tabbar { display: none; }
   bottom: 12px;
   width: 3px;
   border-radius: 2px;
-  background: var(--cinnabar, #b23a2c);
+  background: var(--cinnabar, #a63d32);
 }
-.verse-row.is-picked .verse-text { color: var(--cinnabar, #b23a2c); }
+.verse-row.is-picked .verse-text { color: var(--cinnabar, #a63d32); }
 .verse-pick-hint {
   margin: 16px 2px 0;
   font-size: 13px;
@@ -1436,7 +1467,7 @@ body[data-page="auth"] .tabbar { display: none; }
 .daily-card h3 { font-size: 30px; margin: 10px 0 16px; }
 .daily-card .poem-lines { font-size: 19px; line-height: 38px; }
 
-.section--alt { background: rgba(251, 248, 241, .72); }
+.section--alt { background: rgba(255, 253, 248, .72); }
 
 /* ---------- 诗 / 词 / 曲 板块 ---------- */
 .board-block { margin-top: 44px; }
@@ -1722,7 +1753,7 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 .explain-actions { display: block; margin-top: 10px; }
 .explain-link {
   font-size: 13px; color: var(--cinnabar); text-decoration: none;
-  border-bottom: 1px solid rgba(178, 58, 44, .35);
+  border-bottom: 1px solid rgba(166, 61, 50, .35);
 }
 .explain-link:hover { border-bottom-color: var(--cinnabar); }
 .explain-link:focus-visible {
@@ -1811,12 +1842,12 @@ form[data-panel][hidden] { display: none; }
   background: var(--paper, #fdfbf6); font-size: 14px;
   font-family: inherit; color: var(--ink-900, #22201c);
 }
-.comment-input:focus { outline: none; border-color: var(--cinnabar, #9c3b2e); }
+.comment-input:focus { outline: none; border-color: var(--cinnabar, #a63d32); }
 .btn--sm { padding: 8px 16px; font-size: 13px; }
 .comment-form-locked {
   font-size: 13px; color: var(--ink-400, #9a938a); padding: 4px 0;
 }
-.comment-form-locked a { color: var(--cinnabar, #9c3b2e); text-decoration: none; }
+.comment-form-locked a { color: var(--cinnabar, #a63d32); text-decoration: none; }
 .comment-form-locked a:hover { text-decoration: underline; }
 .post-foot { display: flex; align-items: center; gap: 10px; }
 .post-foot button {
@@ -1824,7 +1855,7 @@ form[data-panel][hidden] { display: none; }
   font-size: 13px; color: var(--ink-500, #7a746a); font-family: inherit;
   padding: 4px 0;
 }
-.post-foot button:hover { color: var(--cinnabar, #9c3b2e); }
+.post-foot button:hover { color: var(--cinnabar, #a63d32); }
 .post-foot button.is-reported,
 .post-foot button:disabled {
   cursor: default;
@@ -1837,7 +1868,7 @@ form[data-panel][hidden] { display: none; }
   display: inline-block;
   margin-top: 8px;
   font-size: 13px;
-  color: var(--cinnabar, #9c3b2e);
+  color: var(--cinnabar, #a63d32);
   text-decoration: none;
 }
 .post-poem-link:hover { text-decoration: underline; }
@@ -1858,17 +1889,17 @@ form[data-panel][hidden] { display: none; }
   max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   text-decoration: none; transition: color .2s ease;
 }
-a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
+a.account-name:hover { color: var(--cinnabar, #a63d32); }
 .account-signout {
   font-size: 14px; color: var(--ink-400, #9a938a); text-decoration: none;
   transition: color .2s ease;
 }
-.account-signout:hover { color: var(--cinnabar, #9c3b2e); }
+.account-signout:hover { color: var(--cinnabar, #a63d32); }
 .header-guest[hidden] { display: none; }
 .header-guest a {
   font-size: 15px; color: var(--ink-700, #4a453d); text-decoration: none;
 }
-.header-guest a:hover { color: var(--cinnabar, #9c3b2e); }
+.header-guest a:hover { color: var(--cinnabar, #a63d32); }
 
 /* --- 顶栏「我的」入口：头像首字 + 笔名，整块可点 --- */
 .auth-user {
@@ -1877,12 +1908,12 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   padding: 5px 12px 5px 5px; border-radius: 999px;
   transition: background .2s ease, color .2s ease;
 }
-.auth-user:hover { background: var(--paper, #faf7f1); color: var(--cinnabar, #9c3b2e); }
+.auth-user:hover { background: var(--paper, #faf7f1); color: var(--cinnabar, #a63d32); }
 .auth-user[aria-current="page"] { background: var(--paper, #faf7f1); }
 .auth-user-avatar {
   width: 28px; height: 28px; flex: none; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--cinnabar, #9c3b2e); color: #fff;
+  background: var(--cinnabar, #a63d32); color: #fff;
   font-size: 14px; font-weight: 600; line-height: 1;
 }
 .auth-user-name {
@@ -1913,7 +1944,7 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 .me-account-row { display: flex; align-items: center; gap: 18px; }
 .avatar--lg {
   width: 60px; height: 60px; font-size: 24px;
-  background: var(--cinnabar, #9c3b2e); color: #fff;
+  background: var(--cinnabar, #a63d32); color: #fff;
 }
 .me-account-info { flex: 1; min-width: 0; }
 .me-account-info h3 {
@@ -1936,11 +1967,11 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 }
 .me-stat-card:hover {
   transform: translateY(-2px);
-  border-color: var(--cinnabar, #9c3b2e);
+  border-color: var(--cinnabar, #a63d32);
 }
 .me-stat-num {
   font-family: var(--font-serif); font-size: 34px; font-weight: 600;
-  color: var(--cinnabar, #9c3b2e); line-height: 1.15;
+  color: var(--cinnabar, #a63d32); line-height: 1.15;
 }
 .me-stat-label {
   font-size: 14px; color: var(--ink-700, #4a453d); margin-top: 6px; font-weight: 500;
@@ -1964,7 +1995,7 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 .me-trend-kpi { display: flex; flex-direction: column; align-items: flex-end; }
 .me-trend-kpi-num {
   font-family: var(--font-serif); font-size: 24px; font-weight: 600;
-  color: var(--cinnabar, #9c3b2e); line-height: 1.2;
+  color: var(--cinnabar, #a63d32); line-height: 1.2;
 }
 .me-trend-kpi-label { font-size: 12px; color: var(--ink-400, #9a938a); margin-top: 2px; }
 
@@ -1973,13 +2004,13 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 /* 等比缩放：高度由 viewBox 比例（560:120）决定，width 撑满、height auto。
  * 不能写死 height —— 那会让 SVG 非等比拉伸，柱子和文字都会变形。 */
 .me-trend-svg { display: block; width: 100%; height: auto; max-height: 160px; }
-.me-bar { fill: var(--cinnabar, #9c3b2e); opacity: .78; transition: opacity .2s ease; }
+.me-bar { fill: var(--cinnabar, #a63d32); opacity: .78; transition: opacity .2s ease; }
 .me-bar-group:hover .me-bar { opacity: 1; }
 .me-bar--today { opacity: 1; }
 /* 当天为 0 时留一条浅色底线，让「这天存在但没学」也能看出来 */
 .me-bar-slot { fill: var(--ink-100, #e8e2d6); }
 .me-bar-num {
-  font-size: 11px; font-weight: 600; fill: var(--cinnabar, #9c3b2e);
+  font-size: 11px; font-weight: 600; fill: var(--cinnabar, #a63d32);
   font-family: var(--font-sans);
 }
 .me-bar-date { font-size: 10px; fill: var(--ink-400, #9a938a); font-family: var(--font-sans); }
@@ -2004,9 +2035,9 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   transition: color .2s ease;
 }
 .me-link:first-of-type { border-top: none; }
-.me-link:hover { color: var(--cinnabar, #9c3b2e); }
+.me-link:hover { color: var(--cinnabar, #a63d32); }
 .me-link-arrow { font-size: 12px; color: var(--ink-300, #b9b1a4); }
-.me-link:hover .me-link-arrow { color: var(--cinnabar, #9c3b2e); }
+.me-link:hover .me-link-arrow { color: var(--cinnabar, #a63d32); }
 
 @media (max-width: 1100px) {
   .me-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2065,11 +2096,11 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
   transition: background .2s ease, color .2s ease;
 }
 .study-step-item.is-done .study-step-idx {
-  background: var(--sand, #f1ebe0); color: var(--cinnabar, #9c3b2e);
+  background: var(--sand, #f1ebe0); color: var(--cinnabar, #a63d32);
 }
 .study-step-item.is-current { color: var(--ink-900, #221e1a); font-weight: 600; }
 .study-step-item.is-current .study-step-idx {
-  background: var(--cinnabar, #9c3b2e); color: #fff;
+  background: var(--cinnabar, #a63d32); color: #fff;
 }
 .study-steps-bar {
   height: 3px; border-radius: 2px; overflow: hidden;
@@ -2077,7 +2108,7 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 }
 .study-steps-fill {
   display: block; height: 100%; width: 0;
-  background: var(--cinnabar, #9c3b2e);
+  background: var(--cinnabar, #a63d32);
   transition: width .3s ease;
 }
 .study-steps-count {
@@ -2123,18 +2154,18 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 .pick-line:hover { background: rgba(0, 0, 0, .035); }
 .pick-line-text { font-size: 18px; line-height: 1.85; color: var(--ink-800, #33302b); }
 /* 「赏析曾引用」只是提示，不是判定 —— 用很轻的底纹，不抢视觉 */
-.pick-line--hint { background: rgba(178, 58, 44, .045); }
+.pick-line--hint { background: rgba(166, 61, 50, .045); }
 .pick-line-tag {
   flex: none; font-size: 11px; letter-spacing: .04em;
-  color: var(--cinnabar, #b23a2c); opacity: .68; white-space: nowrap;
+  color: var(--cinnabar, #a63d32); opacity: .68; white-space: nowrap;
 }
 .pick-line.is-picked {
-  border-color: var(--cinnabar, #b23a2c);
-  background: rgba(178, 58, 44, .07);
+  border-color: var(--cinnabar, #a63d32);
+  background: rgba(166, 61, 50, .07);
 }
-.pick-line.is-picked .pick-line-text { color: var(--cinnabar, #b23a2c); font-weight: 600; }
+.pick-line.is-picked .pick-line-text { color: var(--cinnabar, #a63d32); font-weight: 600; }
 .pick-line:focus-visible {
-  outline: 2px solid var(--cinnabar, #b23a2c);
+  outline: 2px solid var(--cinnabar, #a63d32);
   outline-offset: 2px;
 }
 .pick-hint {
@@ -2162,13 +2193,13 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 /* 学习手册「背诵提示」（笔记 r 字段）：有则展示，无则整块隐藏 —— 不显示空壳 */
 .recite-guide {
   margin: 0 0 22px; padding: 16px 18px;
-  border-left: 3px solid var(--cinnabar, #b23a2c);
-  background: rgba(178, 58, 44, .035);
+  border-left: 3px solid var(--cinnabar, #a63d32);
+  background: rgba(166, 61, 50, .035);
   border-radius: 0 6px 6px 0;
 }
 .recite-guide-label {
   margin: 0 0 8px; font-size: 11px; letter-spacing: .08em;
-  color: var(--cinnabar, #b23a2c); opacity: .8;
+  color: var(--cinnabar, #a63d32); opacity: .8;
 }
 .recite-guide-text {
   margin: 0; font-size: 15px; line-height: 1.95;
@@ -2189,7 +2220,7 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 
 /* --- 焦点样式（PRD 第二十八条） --- */
 .study-step-item:focus-visible {
-  outline: 2px solid var(--cinnabar, #9c3b2e);
+  outline: 2px solid var(--cinnabar, #a63d32);
   outline-offset: 2px;
 }
 
@@ -2481,7 +2512,7 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 .me-achieve-count { display: flex; align-items: baseline; gap: 2px; flex: none; }
 .me-achieve-count-num {
   font-family: var(--font-serif); font-size: 26px; font-weight: 600;
-  color: var(--cinnabar, #9c3b2e); line-height: 1.2;
+  color: var(--cinnabar, #a63d32); line-height: 1.2;
 }
 .me-achieve-count-total {
   font-family: var(--font-serif); font-size: 15px; color: var(--ink-300, #a89e92);
@@ -2524,13 +2555,13 @@ a.account-name:hover { color: var(--cinnabar, #9c3b2e); }
 /* 已达成 */
 .me-achieve-item.is-got { background: var(--card, #fbf8f1); border-color: var(--line, #e0d8c8); }
 .me-achieve-item.is-got .me-achieve-seal {
-  background: var(--cinnabar, #9c3b2e);
+  background: var(--cinnabar, #a63d32);
   color: var(--card, #fbf8f1);
-  border-color: var(--cinnabar, #9c3b2e);
+  border-color: var(--cinnabar, #a63d32);
 }
 .me-achieve-item.is-got .me-achieve-name { color: var(--ink-800, #33302b); }
 .me-achieve-item.is-got .me-achieve-desc { color: var(--ink-500, #6b6158); }
-.me-achieve-item.is-got .me-achieve-prog { color: var(--cinnabar, #9c3b2e); }
+.me-achieve-item.is-got .me-achieve-prog { color: var(--cinnabar, #a63d32); }
 
 .me-achieve-note {
   font-size: 11.5px; color: var(--ink-300, #a89e92);

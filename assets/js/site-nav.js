@@ -42,16 +42,17 @@
     { id: 'me',        label: '我的',     href: 'me.html' }
   ];
 
-  /* ---------- 底部 tabbar（高频 5 项，社区有意不放，避免过挤） ---------- */
+  /* ---------- 底部 tabbar（高频 5 项，社区有意不放，避免过挤）
+   * V3 §31：顺序对齐学习路径「首页/诗词库/学习/挑战/我的」—— 课堂在挑战前 */
   var TABBAR = [
     { id: 'home', label: '首页', href: 'index.html',
       icon: '<path d="M4 10.5L12 4L20 10.5V19C20 19.55 19.55 20 19 20H5C4.45 20 4 19.55 4 19V10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' },
     { id: 'library', label: '诗词库', href: 'library.html',
       icon: '<path d="M5 4H19V20H5C4.45 20 4 19.55 4 19V5C4 4.45 4.45 4 5 4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 8.5H16M8 12H16M8 15.5H12.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' },
-    { id: 'challenge', label: '挑战', href: 'challenge.html',
-      icon: '<path d="M7 4H17V10C17 13.31 14.31 16 11 16C7.69 16 5 13.31 5 10V4H7Z" stroke="currentColor" stroke-width="1.6"/><path d="M7 6H5M17 6H19M11 16V20M8 20H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
     { id: 'class', label: '课堂', href: 'study.html',
       icon: '<path d="M3 7.5L12 4L21 7.5L12 11L3 7.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10V15.5C7 15.5 9.5 17 12 17C14.5 17 17 15.5 17 15.5V10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
+    { id: 'challenge', label: '挑战', href: 'challenge.html',
+      icon: '<path d="M7 4H17V10C17 13.31 14.31 16 11 16C7.69 16 5 13.31 5 10V4H7Z" stroke="currentColor" stroke-width="1.6"/><path d="M7 6H5M17 6H19M11 16V20M8 20H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
     { id: 'me', label: '我的', href: 'me.html',
       icon: '<circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20C5 16.5 8.13 14 12 14C15.87 14 19 16.5 19 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' }
   ];

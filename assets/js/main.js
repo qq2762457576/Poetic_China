@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260912a';
+  var DATA_V = '20260912b';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -1507,6 +1507,17 @@
     var dailyEl = document.getElementById('daily-poem');
     if (!dailyEl) return;
 
+    /* V3 §9：Hero 搜索 —— 提交跳诗词库带关键词（?kw= 由诗词库页承接预填） */
+    var heroForm = document.getElementById('hero-search');
+    if (heroForm) {
+      heroForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var kwEl = document.getElementById('hero-kw');
+        var kw = kwEl ? kwEl.value.trim() : '';
+        location.href = 'library.html' + (kw ? '?kw=' + encodeURIComponent(kw) : '');
+      });
+    }
+
     var seed = daySeed();
     /* 每日推荐：从短于 120 字的名篇体量里按日期轮换 */
     var shortOnes = FEATURED.filter(function (p) { return p.text.length <= 120; });
@@ -1938,6 +1949,19 @@
       });
     }
 
+    /* V3 §12：承接首页 Hero 搜索 —— library.html?kw=… 预填并执行一次检索。
+     * 不写入搜索历史（那是用户在库内主动回车的记忆）。 */
+    (function () {
+      var urlKw = '';
+      try { urlKw = (new URLSearchParams(location.search).get('kw') || '').trim(); } catch (e) { /* 老浏览器静默跳过 */ }
+      if (urlKw && input) {
+        input.value = urlKw;
+        state.keyword = urlKw;
+        state.page = 1;
+        renderPoems();
+      }
+    })();
+
     /* 历史记录点击复用 */
     var histChips = document.getElementById('history-chips');
     if (histChips) {
@@ -2277,30 +2301,53 @@
     });
   }
 
+  /* V3 §25 + 模拟图：信息流排序（最新/热门）。
+   * 热门按真实点赞数降序（点赞数为云端存储的真实值），并列再按时间新→旧；
+   * 不造任何互动数据 —— 没有点赞时热门与最新同序，属如实表现。 */
+  var feedSort = 'latest';
+  var feedCache = [];
+
+  function sortFeed(all) {
+    var arr = (all || []).slice();
+    if (feedSort === 'hot') {
+      arr.sort(function (a, b) { return (b.likes || 0) - (a.likes || 0) || b.ts - a.ts; });
+    } else {
+      arr.sort(function (a, b) { return b.ts - a.ts; });
+    }
+    return arr;
+  }
+
+  function paintFeed(all) {
+    var list = document.getElementById('post-list');
+    if (!list) return;
+    list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
+      '<div class="empty-state">' +
+      '<p style="margin:0 0 14px;">这里还很安静。分享第一首诗，或把喜欢的经典推荐给同好。</p>' +
+      '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
+      '</div>';
+    list.querySelectorAll('[data-like]').forEach(bindLike);
+    list.querySelectorAll('[data-report]').forEach(bindReport);
+    bindCommentToggles(list);
+    fillClassicBodies(list);
+    var composeBtn = list.querySelector('[data-open-compose]');
+    if (composeBtn) composeBtn.addEventListener('click', function () {
+      var trigger = document.querySelector('[data-compose-open]');
+      if (trigger) trigger.click();
+      else {
+        var card = document.getElementById('compose');
+        if (card) { card.hidden = false; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
+    });
+  }
+
   function renderFeed() {
     var list = document.getElementById('post-list');
     if (!list) return;
     list.innerHTML = skeletonCards(3, '正在载入诗友分享');
     /* 云端模式：所有访客（含未登录）都能看到全站已通过的分享 */
     loadFeed(function (all) {
-      list.innerHTML = all.map(function (p) { return postCard(p); }).join('') ||
-        '<div class="empty-state">' +
-        '<p style="margin:0 0 14px;">这里还很安静。分享第一首诗，或把喜欢的经典推荐给同好。</p>' +
-        '<button class="btn btn--primary" data-open-compose>发布分享</button>' +
-        '</div>';
-      list.querySelectorAll('[data-like]').forEach(bindLike);
-      list.querySelectorAll('[data-report]').forEach(bindReport);
-      bindCommentToggles(list);
-      fillClassicBodies(list);
-      var composeBtn = list.querySelector('[data-open-compose]');
-      if (composeBtn) composeBtn.addEventListener('click', function () {
-        var trigger = document.querySelector('[data-compose-open]');
-        if (trigger) trigger.click();
-        else {
-          var card = document.getElementById('compose');
-          if (card) { card.hidden = false; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        }
-      });
+      feedCache = all;
+      paintFeed(sortFeed(all));
     });
   }
 
@@ -2405,6 +2452,20 @@
   function initCommunity() {
     var feed = document.getElementById('post-list');
     if (!feed) return;
+
+    /* V3 §25：最新/热门排序 tab（有缓存时切换只重排，不发新请求） */
+    var sortBar = document.getElementById('feed-sort');
+    if (sortBar) {
+      sortBar.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-feed-sort]');
+        if (!tab) return;
+        feedSort = tab.getAttribute('data-feed-sort') === 'hot' ? 'hot' : 'latest';
+        sortBar.querySelectorAll('[data-feed-sort]').forEach(function (t) {
+          t.classList.toggle('is-active', t === tab);
+        });
+        if (feedCache.length) paintFeed(sortFeed(feedCache));
+      });
+    }
 
     renderFeed();
     /* 先按「未登录/非站长」渲染（面板默认隐藏），再拉云端名单复渲染一次，
