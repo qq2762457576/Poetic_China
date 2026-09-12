@@ -29,6 +29,8 @@
       initCommunity();
       initStudy();
       initChallenge();
+      /* 错题本独立页（wrongbook.html）：页面守卫在函数内部，其他页空转 */
+      initWrongbookPage();
     }
     if (needsIndex) IndexStore.boot(booted);
     else booted();

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>错题本 · 诗意中国</title>
+  <meta name="description" content="挑战闯关答错的题自动收进错题本：回看原诗、再练一遍，答对即移出。" />
+  <meta name="keywords" content="诗词错题本,错题复习,诗词练习,背古诗,诗意中国" />
+  <meta name="robots" content="noindex,follow" />
+  <link rel="canonical" href="https://qq2762457576.github.io/Poetic_China/wrongbook.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="诗意中国" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="错题本 · 诗意中国" />
+  <meta property="og:description" content="挑战闯关答错的题自动收进错题本：回看原诗、再练一遍，答对即移出。" />
+  <meta property="og:url" content="https://qq2762457576.github.io/Poetic_China/wrongbook.html" />
+  <meta property="og:image" content="https://qq2762457576.github.io/Poetic_China/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="诗意中国 — 读诗 学诗 写诗" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://qq2762457576.github.io/Poetic_China/assets/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="alternate icon" href="assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912g" />
+</head>
+<body data-page="wrongbook">
+
+  <!-- ============ 顶部导航（由 site-nav.js 注入） ============ -->
+  <div data-nav="top"></div>
+
+  <main>
+    <div class="container">
+      <!-- ============ 页面头部 ============ -->
+      <section class="page-head">
+        <div class="page-head-top">
+          <div>
+            <h1 class="page-title">错题本</h1>
+            <p class="page-subtitle">答错的题自动收进来：回看原诗、再练一遍，答对即移出</p>
+          </div>
+          <span class="badge-pill badge-pending" id="wrong-count" title="待复习错题数">0</span>
+        </div>
+      </section>
+
+      <!-- ============ 错题列表（initWrongbookPage 渲染） ============ -->
+      <div class="wrongbook-wrap" id="wrongbook-page">
+        <div class="empty-state wrong-empty" id="wrong-empty">
+          <p style="margin:0 0 4px;">还没有错题。</p>
+          <p style="margin:0;">去挑战闯关，答错的题会自动收进来。</p>
+          <a class="btn btn--primary" href="challenge.html" style="margin-top:16px;">去闯关</a>
+        </div>
+
+        <div class="wrong-list" id="wrong-list"></div>
+
+        <div id="wrong-actions" hidden class="wrongbook-actions">
+          <button class="btn btn--primary" id="wrong-practice" type="button">再练一遍（最多 10 题）</button>
+          <button class="btn btn--ghost" id="wrong-clear" type="button">清空错题本</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ 页脚（由 site-nav.js 注入） ============ -->
+  <div data-nav="footer"></div>
+
+  <!-- ============ 底部导航（移动端） ============ -->
+
+  <script src="assets/data/site-stats.js?v=20260912g" defer></script>
+  <script src="assets/data/aliases.js?v=20260912g" defer></script>
+  <script src="assets/js/config.js?v=20260912g" defer></script>
+  <script src="assets/js/cloud.js?v=20260912g" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912g" defer></script>
+  <script src="assets/js/main.js?v=20260912g" defer></script>
+
+  <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
+  <div data-nav="tabbar"></div>
+
+</body>
+</html>

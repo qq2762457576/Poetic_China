@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260912f';
+  var DATA_V = '20260912g';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -4497,10 +4497,12 @@
     }
   }
 
-  /* 渲染错题本。未登录也能用（本地存储），登录后随其他数据一同同步。 */
+  /* 渲染错题本。未登录也能用（本地存储），登录后随其他数据一同同步。
+   * 两处消费方共用同一套数据与 id 口径：
+   *   · 挑战页底部「错题本」横幅区（wrong-count / wrong-empty / wrong-actions / wrong-recent）
+   *   · 错题本独立页 wrongbook.html（完整列表 wrong-list + wrong-clear）
+   * 元素不存在就跳过 —— 两个页面各自渲染各自的，互不依赖。 */
   function renderWrongBook() {
-    var box = document.getElementById('wrong-list');
-    if (!box) return;
     var arr = loadWrongBook();
     var countEl = document.getElementById('wrong-count');
     if (countEl) countEl.textContent = arr.length ? String(arr.length) : '0';
@@ -4510,24 +4512,81 @@
     if (emptyEl) emptyEl.hidden = arr.length > 0;
     if (actionsEl) actionsEl.hidden = arr.length === 0;
 
-    if (!arr.length) { box.innerHTML = ''; return; }
+    var box = document.getElementById('wrong-list');
+    if (box) {
+      box.innerHTML = arr.length ? arr.map(function (it) {
+        var k = wrongKeyOf(it);
+        return (
+          '<div class="wrong-item" data-wrong="' + esc(k) + '">' +
+          '<p class="wrong-stem">' + esc(it.stem) + '</p>' +
+          '<p class="wrong-meta">' + esc(it.author) + '《' + esc(it.title) + '》' +
+          '<span class="wrong-mode">' + esc(MODE_NAME[it.mode] || '练习') + '</span></p>' +
+          (it.tip ? '<p class="wrong-tip">' + esc(it.tip) + '</p>' : '') +
+          '<div class="wrong-ops">' +
+          '<a class="wrong-link" href="study.html?title=' + encodeURIComponent(it.title) +
+          '&author=' + encodeURIComponent(it.author) + '">去读这首</a>' +
+          '<button class="wrong-del" data-wrong-del="' + esc(k) + '" type="button">已掌握</button>' +
+          '</div>' +
+          '</div>'
+        );
+      }).join('') : '';
+    }
 
-    box.innerHTML = arr.map(function (it) {
-      var k = wrongKeyOf(it);
+    /* 挑战页底部的「最近错题」精简区（完整列表在独立页） */
+    renderWrongRecent();
+  }
+
+  /* 挑战页底部横幅区：最近 6 条错题的精简卡，点击直达原诗；
+   * 完整管理（逐条移除 / 清空）在错题本独立页 wrongbook.html。 */
+  function renderWrongRecent() {
+    var box = document.getElementById('wrong-recent');
+    if (!box) return;
+    var arr = loadWrongBook();
+    box.innerHTML = arr.slice(0, 6).map(function (it) {
+      var href = 'study.html?title=' + encodeURIComponent(it.title) +
+        '&author=' + encodeURIComponent(it.author);
       return (
-        '<div class="wrong-item" data-wrong="' + esc(k) + '">' +
-        '<p class="wrong-stem">' + esc(it.stem) + '</p>' +
-        '<p class="wrong-meta">' + esc(it.author) + '《' + esc(it.title) + '》' +
-        '<span class="wrong-mode">' + esc(MODE_NAME[it.mode] || '练习') + '</span></p>' +
-        (it.tip ? '<p class="wrong-tip">' + esc(it.tip) + '</p>' : '') +
-        '<div class="wrong-ops">' +
-        '<a class="wrong-link" href="study.html?title=' + encodeURIComponent(it.title) +
-        '&author=' + encodeURIComponent(it.author) + '">去读这首</a>' +
-        '<button class="wrong-del" data-wrong-del="' + esc(k) + '" type="button">已掌握</button>' +
-        '</div>' +
-        '</div>'
+        '<a class="wrong-recent-item" href="' + href + '">' +
+        '<span class="wrong-recent-stem">' + esc(it.stem) + '</span>' +
+        '<span class="wrong-recent-meta">' + esc(it.author) + '《' + esc(it.title) + '》' +
+        '<em>' + esc(MODE_NAME[it.mode] || '练习') + '</em></span>' +
+        '</a>'
       );
     }).join('');
+  }
+
+  /* ---------- 错题本独立页（wrongbook.html）----------
+   * 与挑战页共用同一套存储口径（shici_wrongbook）与渲染（renderWrongBook）。
+   * 「再练一遍」跳回挑战页 ?wrong=1 自动开局 —— 题库分片只在挑战页加载。 */
+  function initWrongbookPage() {
+    if (!document.getElementById('wrongbook-page')) return;
+
+    renderWrongBook();
+    /* 已登录但本地为空 → 错题可能只存在云端（换了设备），补拉一次（与挑战页同构） */
+    if (loggedIn() && !loadWrongBook().length &&
+        window.Cloud && window.Cloud.wrongbook) {
+      window.Cloud.wrongbook.list(function (items) {
+        if (!items || !items.length) return;
+        saveWrongBook(items.slice(0, WRONG_MAX));
+        renderWrongBook();
+      });
+    }
+
+    var box = document.getElementById('wrong-list');
+    if (box) {
+      box.addEventListener('click', function (e) {
+        var del = e.target.closest('[data-wrong-del]');
+        if (del) { removeWrong(del.getAttribute('data-wrong-del')); e.preventDefault(); }
+      });
+    }
+    var clearBtn = document.getElementById('wrong-clear');
+    if (clearBtn) clearBtn.addEventListener('click', clearWrongBook);
+    var practice = document.getElementById('wrong-practice');
+    if (practice) {
+      practice.addEventListener('click', function () {
+        location.href = 'challenge.html?wrong=1';
+      });
+    }
   }
 
   function initChallenge() {
@@ -4563,6 +4622,7 @@
     if (window.QUIZ_POOL_DATA && window.QUIZ_POOL_DATA.length) {
       buildQuizPool();
       bootChallenge(stemEl, optionsEl);
+      maybeAutoWrongPractice();
       return;
     }
     /* 题库分块：随机挑一块再开局（懒加载，单次约 3MB） */
@@ -4576,7 +4636,19 @@
       }
       buildQuizPool();
       bootChallenge(stemEl, optionsEl);
+      maybeAutoWrongPractice();
     });
+  }
+
+  /* 带 ?wrong=1 进入挑战页（错题本页「再练一遍」的落点）→ 题库就绪后自动开局。
+   * 必须放在 bootChallenge 之后：startWrongPractice 走真实模式卡点击路径，
+   * 而 mode-row 的监听是在 bootChallenge 里挂上的，早了会点空。 */
+  function maybeAutoWrongPractice() {
+    try {
+      if (new URLSearchParams(location.search).get('wrong') === '1') {
+        startWrongPractice();
+      }
+    } catch (e) {}
   }
 
   function bootChallenge(stemEl, optionsEl) {
@@ -4951,6 +5023,8 @@
       initCommunity();
       initStudy();
       initChallenge();
+      /* 错题本独立页（wrongbook.html）：页面守卫在函数内部，其他页空转 */
+      initWrongbookPage();
     }
     if (needsIndex) IndexStore.boot(booted);
     else booted();

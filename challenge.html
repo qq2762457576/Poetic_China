@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="alternate icon" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260912f" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260912g" />
 </head>
 <body data-page="challenge" data-nav-search="1">
 
@@ -36,7 +36,7 @@
   <main>
     <div class="container">
       <!-- ============ 页面头部 ============ -->
-      <section class="page-head" style="padding-bottom:26px;">
+      <section class="page-head">
         <div class="page-head-top">
           <div>
             <h1 class="page-title">挑战闯关</h1>
@@ -127,10 +127,6 @@
       <section class="challenge-bottom">
         <div class="card side-card">
           <h4>我的成绩</h4>
-          <div class="progress-pill" style="margin-bottom:14px;">
-            <span id="daily-progress-text">今日进度 0 / 10 题</span>
-            <div class="progress-track"><div class="progress-fill" id="daily-progress-fill" style="width:0%"></div></div>
-          </div>
           <div class="rank-row"><span>今日连对</span><span id="score-streak" style="color:var(--cinnabar);font-weight:600;">0 题</span></div>
           <div class="divider" style="margin:10px 0;"></div>
           <div class="rank-row"><span>历史最高连击</span><span id="score-best">0</span></div>
@@ -150,18 +146,20 @@
           <div id="rank-list"></div>
           <div class="rank-updated" id="rank-updated"></div>
         </div>
+      </section>
 
-        <!-- 错题本：答错的题自动收进来，可回看原诗、标记已掌握 -->
-        <div class="card side-card" id="wrong-card">
+      <!-- ============ 错题本横幅区：最近错题速览；完整列表与清空在错题本独立页 ============ -->
+      <section class="card wrongbook-band" id="wrong-card">
+        <div class="wrongband-head">
           <h4>错题本 <span class="badge-pill badge-pending" id="wrong-count">0</span></h4>
-          <div class="wrong-list" id="wrong-list"></div>
-          <div class="empty-state wrong-empty" id="wrong-empty">
-            <p style="margin:0;">还没有错题。答错的题会自动收进来，方便回头复习。</p>
-          </div>
-          <div id="wrong-actions" hidden style="margin-top:12px;">
-            <button class="btn btn--primary btn--block" id="wrong-practice" type="button">再练一遍</button>
-            <button class="btn btn--ghost btn--block" id="wrong-clear" type="button" style="margin-top:8px;">清空错题本</button>
-          </div>
+          <a class="wrongband-more" href="wrongbook.html">查看全部 →</a>
+        </div>
+        <div class="empty-state wrong-empty" id="wrong-empty">
+          <p style="margin:0;">还没有错题。答题时答错的题会自动收进来，方便回头复习。</p>
+        </div>
+        <div class="wrong-recent-grid" id="wrong-recent"></div>
+        <div id="wrong-actions" hidden class="wrongband-actions">
+          <button class="btn btn--primary" id="wrong-practice" type="button">再练一遍</button>
         </div>
       </section>
     </div>
@@ -176,13 +174,13 @@
   <!-- ============ 底部导航（移动端） ============ -->
 
 
-  <script src="assets/data/site-stats.js?v=20260912f" defer></script>
-  <script src="assets/data/aliases.js?v=20260912f" defer></script>
-  <script src="assets/data/banks.js?v=20260912f" defer></script>
-  <script src="assets/js/config.js?v=20260912f" defer></script>
-  <script src="assets/js/cloud.js?v=20260912f" defer></script>
-  <script src="assets/js/site-nav.js?v=20260912f" defer></script>
-  <script src="assets/js/main.js?v=20260912f" defer></script>
+  <script src="assets/data/site-stats.js?v=20260912g" defer></script>
+  <script src="assets/data/aliases.js?v=20260912g" defer></script>
+  <script src="assets/data/banks.js?v=20260912g" defer></script>
+  <script src="assets/js/config.js?v=20260912g" defer></script>
+  <script src="assets/js/cloud.js?v=20260912g" defer></script>
+  <script src="assets/js/site-nav.js?v=20260912g" defer></script>
+  <script src="assets/js/main.js?v=20260912g" defer></script>
 
   <!-- ============ 移动端底栏（由 site-nav.js 注入） ============ -->
   <div data-nav="tabbar"></div>

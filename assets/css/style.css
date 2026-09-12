@@ -1793,12 +1793,13 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 /* 课堂页：左推荐（300px）/ 中央正文+赏析（1fr） */
 .page-body--study { grid-template-columns: 300px minmax(0, 1fr) !important; }
 
-/* 挑战页：底部成绩区三卡横排 */
+/* 挑战页：底部成绩区三卡横排。
+ * 底距收紧为 24px —— 页尾留白改由错题本横幅的 margin-bottom 统一负责 */
 .challenge-bottom {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  padding: 0 0 64px;
+  padding: 0 0 24px;
 }
 
 /* 挑战页：题目卡视觉权重加大 */
@@ -2039,6 +2040,92 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
 .wrong-del:hover { color: var(--cinnabar); }
 .wrong-empty { padding: 12px 0; font-size: 13px; line-height: 22px; }
 
+/* ---------- 错题本横幅区（挑战页底部全宽）+ 错题本独立页 ----------
+ * 挑战页只放「最近 6 条速览 + 计数 + 再练」，完整列表/逐条移除/清空在独立页；
+ * 两处共用 renderWrongBook 同一套数据与 id 口径。 */
+.wrongbook-band { margin: 0 0 64px; }
+.wrongband-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.wrongband-head h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--ink-800, #33302b);
+}
+.wrongband-more {
+  font-size: 13px;
+  color: var(--cinnabar);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wrongband-more:hover { text-decoration: underline; }
+/* ⚠️ hidden 属性会被作者样式的 display:flex 覆盖，必须显式补 [hidden] */
+.wrongband-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.wrongband-actions[hidden] { display: none; }
+
+/* 最近错题速览：精简卡，视觉沿用错题条目（朱砂左条 + 纸底 + 衬线题干） */
+.wrong-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.wrong-recent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink-100, #e8e2d6);
+  border-left: 3px solid var(--cinnabar);
+  border-radius: 6px;
+  background: var(--paper, #faf7f1);
+  text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.wrong-recent-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(166, 61, 50, .45);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(38, 35, 31, .08));
+}
+.wrong-recent-stem {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--ink-900);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wrong-recent-meta {
+  font-size: 12px;
+  color: var(--ink-400);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wrong-recent-meta em {
+  font-style: normal;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--card, #fff);
+  border: 1px solid var(--ink-100, #e8e2d6);
+  color: var(--ink-500);
+}
+.wrongbook-band .wrong-empty { padding: 20px 0 6px; font-size: 14px; }
+
+/* 错题本独立页：窄栏居中，完整列表 + 再练 / 清空 */
+.wrongbook-wrap { max-width: 900px; margin: 0 auto; padding-bottom: 64px; }
+.wrongbook-wrap .wrong-list { margin-bottom: 4px; }
+.wrongbook-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.wrongbook-actions[hidden] { display: none; }
+.wrongbook-wrap .empty-state { padding: 44px 0 36px; font-size: 15px; }
+
 /* --- 答错后的解释卡（PRD 第十九条闭环的「解释」环节）
    只呈现客观事实：正确答案是第几项 + 原句 + 回课堂入口。
    不做「你为什么错」的评价。 --- */
@@ -2076,6 +2163,7 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
   .page-body--challenge > :last-child { display: block; }
   .page-body--study { grid-template-columns: 280px minmax(0, 1fr) !important; }
   .page-body--study > :last-child { display: block; }
+  .wrong-recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* 响应式：768px 以下全部单列 */
@@ -2085,7 +2173,9 @@ a.poem-mini h3 { font-size: 20px; margin: 0; }
   .page-body--study { grid-template-columns: 1fr !important; }
   /* 课堂页：正文+赏析优先，推荐/诗人/打卡排后 */
   .page-body--study > :last-child { order: -1; }
-  .challenge-bottom { grid-template-columns: 1fr; }
+  .challenge-bottom { grid-template-columns: 1fr; padding-bottom: 20px; }
+  .wrong-recent-grid { grid-template-columns: 1fr; }
+  .wrongbook-band { margin-bottom: 40px; }
   .quiz-main-card { padding: 26px 22px; min-height: 0; }
   .quiz-main-card .quiz-stem { font-size: 22px; line-height: 38px; }
 }
