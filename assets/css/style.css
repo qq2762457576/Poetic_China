@@ -807,16 +807,53 @@ input, textarea { font: inherit; color: inherit; }
 .post-title { font-size: 21px; font-weight: 600; }
 .post-foot { font-size: 13px; color: var(--ink-300); }
 
+/* 入口按钮（首页模块卡「去检索/去上课/去闯关/去看看」、每日推荐「去读这首」、
+ * 课堂页上一首/下一首）。
+ * 旧版白底细边框像输入框；重做为有体积感的按钮：
+ * 微渐变纸面 + 墨线描边 + 顶部受光亮边 + 轻影，hover 朱砂描边并上浮，按下回落。 */
 .more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: 50px;
-  border: 1px solid var(--line-input);
+  min-height: 50px;
+  padding: 12px 22px;
+  border: 1px solid rgba(38, 35, 31, 0.18);
   border-radius: var(--radius);
-  background: var(--card);
+  /* 一层极淡的纵向纸面渐变，摆脱输入框的平板白 */
+  background: linear-gradient(180deg, #fffdf8 0%, #faf4e8 100%);
   font-size: 15px;
-  color: var(--ink-500);
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--ink-700);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), var(--shadow-xs);
+  transition: border-color .2s ease, background .2s ease, color .2s ease,
+    box-shadow .2s ease, transform .15s ease;
 }
-.more-btn:hover { border-color: var(--cinnabar); color: var(--cinnabar); }
+.more-btn:hover {
+  border-color: var(--cinnabar);
+  background: linear-gradient(180deg, #fffdf8 0%, #fbf1ec 100%);
+  color: var(--cinnabar);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 4px 12px rgba(38, 35, 31, 0.10);
+}
+.more-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), var(--shadow-xs);
+}
+/* 首页模块卡：整卡可点，鼠标落在卡上任意处按钮就点亮（联动回应） */
+.module-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.module-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(38, 35, 31, 0.18);
+}
+.module-card:hover .more-btn {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: linear-gradient(180deg, #fffdf8 0%, #fbf1ec 100%);
+}
 
 .rank-row {
   display: flex;
