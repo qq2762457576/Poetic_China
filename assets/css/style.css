@@ -807,6 +807,23 @@ input, textarea { font: inherit; color: inherit; }
 }
 .poem-row:hover { border-color: #cdbf9f; }
 
+/* V3 封面：列表行首竖版水墨小画（AI 生成，§37 版权安全；loading=lazy，§42） */
+.poem-row-cover {
+  width: 88px;
+  height: 117px;
+  flex: none;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--sand);
+}
+@media (max-width: 640px) {
+  /* 窄屏收窄封面；体裁信息作者行里已有（· 七言绝句），徽标让位 */
+  .poem-row-cover { width: 64px; height: 85px; }
+  .poem-row .genre-badge { display: none; }
+  .poem-row { padding: 14px 16px; gap: 14px; }
+}
+
 .genre-badge {
   width: 46px;
   height: 46px;
@@ -1190,6 +1207,36 @@ body[data-page="auth"] .tabbar { display: none; }
   letter-spacing: 0.5px;
 }
 .topic-card-from { font-size: 12px; color: var(--ink-400); }
+
+/* V3 模拟图：课程卡横排封面（AI 生成水墨，按课程序稳定分配） */
+.topic-card--cover {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-areas:
+    "img name"
+    "img basis"
+    "img count";
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
+  padding: 14px 18px 14px 14px;
+}
+.topic-card--cover .topic-card-img {
+  grid-area: img;
+  width: 96px;
+  height: 128px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--sand);
+}
+.topic-card--cover .topic-card-name { grid-area: name; font-size: 17px; }
+.topic-card--cover .topic-card-basis { grid-area: basis; font-size: 12px; color: var(--ink-400); }
+.topic-card--cover .topic-card-count { grid-area: count; font-size: 12px; color: var(--cinnabar); }
+@media (max-width: 640px) {
+  .topic-card--cover { grid-template-columns: 72px minmax(0, 1fr); }
+  .topic-card--cover .topic-card-img { width: 72px; height: 96px; }
+}
 /* 口径行：说清这 20 首是怎么来的（PRD 第四十条） */
 .topic-card-basis { font-size: 12px; line-height: 1.7; color: var(--ink-300); }
 .topic-card-count {

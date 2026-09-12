@@ -638,7 +638,7 @@
    * 数据重建后忘了改 → 浏览器按旧 URL 命中旧缓存，
    * 表现为「文件里明明有这首诗，网站却搜不到」。
    * 数据一重建就改这一个常量。 */
-  var DATA_V = '20260912b';
+  var DATA_V = '20260912c';
 
   /* 正文分块懒加载：3000 首/块，用到才下载，下载后缓存 */
   var CHUNK_SIZE = 3000;
@@ -1740,6 +1740,33 @@
     });
   }
 
+  /* ---------- V3 封面分配（确定性：同一首诗永远同一张图） ----------
+   * 按「标题+首句」匹配主题关键词；都不中时用 id 散列兜底。
+   * 图源：AI 生成水墨 8 张（assets/img/covers/，§37 版权安全）。 */
+  var COVER_THEMES = [
+    { img: 'snow.jpg',   keys: ['雪', '寒', '冬', '梅', '江雪'] },
+    { img: 'lotus.jpg',  keys: ['荷', '莲', '芙蕖', '采菱', '清波'] },
+    { img: 'bamboo.jpg', keys: ['竹', '笋', '绿筠'] },
+    { img: 'desert.jpg', keys: ['塞', '戍', '征', '关山', '大漠', '燕然'] },
+    { img: 'farm.jpg',   keys: ['田', '村', '农', '归园', '田园', '村居'] },
+    { img: 'willow.jpg', keys: ['柳', '送别', '春', '花', '江南', '燕'] },
+    { img: 'moon.jpg',   keys: ['月', '夜', '嫦娥', '中秋', '相思', '秋'] }
+  ];
+  var COVER_FALLBACK = ['mountain.jpg', 'moon.jpg', 'willow.jpg', 'bamboo.jpg',
+    'lotus.jpg', 'snow.jpg', 'farm.jpg', 'desert.jpg'];
+
+  function coverOf(p) {
+    var hay = (p.title || '') + (p.line || '');
+    for (var i = 0; i < COVER_THEMES.length; i++) {
+      var keys = COVER_THEMES[i].keys;
+      for (var j = 0; j < keys.length; j++) {
+        if (hay.indexOf(keys[j]) >= 0) return COVER_THEMES[i].img;
+      }
+    }
+    var id = typeof p.id === 'number' ? p.id : 0;
+    return COVER_FALLBACK[Math.abs(id) % COVER_FALLBACK.length];
+  }
+
   function renderPoems() {
     var wrap = document.getElementById('poem-list');
     var countEl = document.getElementById('result-count');
@@ -1804,8 +1831,11 @@
         /* 列表只显示首行（索引自带），全文进课堂页按块加载 */
         var shown = esc(p.line) +
           '<br /><span class="poem-row-more">点击查看全文与注释 →</span>';
+        /* V3 封面（模拟图：列表配竖版水墨小画）：主题关键词优先，兜底 id 稳定散列。
+         * 图为 AI 生成水墨（无版权来源问题，§37），loading=lazy（§42）。 */
         return (
           '<article class="poem-row poem-row--link" data-goto="' + poemUrl(p.id) + '">' +
+          '<img class="poem-row-cover" src="assets/img/covers/' + coverOf(p) + '" alt="" loading="lazy" width="88" height="117" />' +
           '<div class="genre-badge">' + esc(p.genre) + '</div>' +
           '<div class="poem-row-main">' +
           '<h3 class="poem-row-title">' + esc(p.title) + '</h3>' +
@@ -3041,8 +3071,12 @@
     if (!courses || !courses.length) return false;
 
     section.hidden = false;
+    /* V3 模拟图：课程卡配封面（AI 生成水墨按课程序稳定分配，lazy loading §42） */
+    var courseCovers = ['mountain', 'bamboo', 'moon', 'willow', 'farm'];
     grid.innerHTML = courses.map(function (c, i) {
-      return '<button class="topic-card" type="button" data-course="' + i + '">' +
+      var cover = courseCovers[i % courseCovers.length];
+      return '<button class="topic-card topic-card--cover" type="button" data-course="' + i + '">' +
+        '<img class="topic-card-img" src="assets/img/covers/' + cover + '.jpg" alt="" loading="lazy" width="96" height="128" />' +
         '<span class="topic-card-name">' + esc(c.name) + '</span>' +
         '<span class="topic-card-basis">' + esc(c.basis) + '</span>' +
         '<span class="topic-card-count">' + c.lessonCount + ' 课</span>' +

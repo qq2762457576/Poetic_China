@@ -10,8 +10,12 @@
     if (!courses || !courses.length) return false;
 
     section.hidden = false;
+    /* V3 模拟图：课程卡配封面（AI 生成水墨按课程序稳定分配，lazy loading §42） */
+    var courseCovers = ['mountain', 'bamboo', 'moon', 'willow', 'farm'];
     grid.innerHTML = courses.map(function (c, i) {
-      return '<button class="topic-card" type="button" data-course="' + i + '">' +
+      var cover = courseCovers[i % courseCovers.length];
+      return '<button class="topic-card topic-card--cover" type="button" data-course="' + i + '">' +
+        '<img class="topic-card-img" src="assets/img/covers/' + cover + '.jpg" alt="" loading="lazy" width="96" height="128" />' +
         '<span class="topic-card-name">' + esc(c.name) + '</span>' +
         '<span class="topic-card-basis">' + esc(c.basis) + '</span>' +
         '<span class="topic-card-count">' + c.lessonCount + ' 课</span>' +

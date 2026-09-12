@@ -10,3 +10,5 @@ poetry-raw/
 # 数据备份文件，不提交
 *.bak.js
 *.bak.json
+# V3 封面原始大图（本地留存，站点只用压缩后的 covers/）
+assets/img/covers-raw/
